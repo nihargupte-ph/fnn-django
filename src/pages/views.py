@@ -4,5 +4,8 @@ from django.shortcuts import render
 # Create your views here.
 def home_view(request):
     context = {}
-    #return HttpResponse("<h1> hello world <h2>")
     return render(request, "home.html", context)
+
+def howitworks_view(request):
+    context = {}
+    return render(request, "howitworks.html", context)
