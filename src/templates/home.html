@@ -2,24 +2,6 @@
 {% load static %}
 
 {% block content %}
-<!-- Navigation-->
-<nav class="navbar navbar-expand-lg navbar-light fixed-top" id="mainNav">
-    <div class="container">
-        <a class="navbar-brand js-scroll-trigger" href="#page-top">Home</a>
-        <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
-            Menu
-            <i class="fas fa-bars"></i>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarResponsive">
-            <ul class="navbar-nav ml-auto">
-                <li class="nav-item"><a class="nav-link js-scroll-trigger" href="#about">About</a></li>
-                <li class="nav-item"><a class="nav-link js-scroll-trigger" href="#projects">Projects</a></li>
-                <li class="nav-item"><a class="nav-link js-scroll-trigger" href="#signup">Contact</a></li>
-                <li class="nav-item"><a class="nav-link js-scroll-trigger" href="/howitworks/">How It Works</a></li>
-            </ul>
-        </div>
-    </div>
-</nav>
 <!-- Masthead-->
 <header class="masthead">
     <div class="container d-flex h-100 align-items-center">
@@ -96,11 +78,22 @@
             <div class="col-md-10 col-lg-8 mx-auto text-center">
                 <i class="far fa-paper-plane fa-2x mb-2 text-white"></i>
                 <h2 class="text-white mb-2">Subscribe to receive updates!</h2>
-                <p class="text-white mb-5">You will recieve email alerts from X@Y.com when our algorithm detects fires</p>
-                <form class="form-inline d-flex" action="{% url 'home'%}">
-                    {% csrf_token %}
-                    <input class="form-control flex-fill mr-0 mr-sm-2 mb-3 mb-sm-0" id="inputEmail" type="email" placeholder="Enter email address..." />
-                    <button class="btn btn-primary mx-auto" type="submit">Subscribe</button>
+                <p class="text-white mb-5"> 
+                {% if messages %}
+                    {% for message in messages %}
+                        {{ message }}
+                    {% endfor %}
+                {% else %} You will recieve email alerts from fireneuralnetwork@gmail.com when our algorithm detects fires
+                {% endif %} </p>
+                <form method="POST" action="/home/#signup">
+                    <div style="text-align: center;">
+                        <div class="g-recaptcha" style="display: inline-block;" data-sitekey="6LeOJ7oZAAAAAJIIOA4YRSh4bsChrVPLp4YdVRvS"></div>
+                    </div>
+                    <div class="form-inline d-flex">
+                        {% csrf_token %}
+                        {{ form }}
+                        <button class="btn btn-primary mx-auto" type="submit">Subscribe</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -149,5 +142,7 @@
     </div>
 </section>
 
+<!-- Google Captcha -->
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
 {% endblock content %}
