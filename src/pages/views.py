@@ -42,6 +42,8 @@ class HomeView(TemplateView):
             
         return render(request, self.template_name, {'form':blank_form, 'invalid':True})
 
+def firepage_view(request):
+    return render(request, "firepage.html", {})
 
 def howitworks_view(request):
     context = {}

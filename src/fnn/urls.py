@@ -16,10 +16,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from pages.views import HomeView, howitworks_view
+from pages.views import HomeView, howitworks_view, firepage_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('home/', HomeView.as_view(), name="home"),
-    path('howitworks/', howitworks_view)
+    path('howitworks/', howitworks_view),
+    path('firepage/', firepage_view, name='firepage')
 ]
