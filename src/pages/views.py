@@ -1,8 +1,9 @@
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, ListView
 from django.contrib import messages
 from .forms import EmailForm
+from .models import FireModel
 import requests
 import json
 
@@ -42,9 +43,15 @@ class HomeView(TemplateView):
             
         return render(request, self.template_name, {'form':blank_form, 'invalid':True})
 
-def firepage_view(request):
-    return render(request, "firepage.html", {})
+def fire_page_view(request):
+    context = {'fire_list':FireModel.objects.all()}
+    return render(request, "firepage.html", context)
 
-def howitworks_view(request):
+def fire_detail_view(request, pk):
+    fire = FireModel.objects.get(id=pk)
+    return render(request, "firedetail.html", {'fire':fire})
+
+def how_it_works_view(request):
     context = {}
     return render(request, "howitworks.html", context)
+

@@ -1,6 +1,47 @@
 {% extends 'base.html'%}
-{% load static %}
 
 {% block content %}
+<section class="projects-section bg-dark" id="projects">
+    <div class="container">
+        <!-- Featured Project Row-->
+        <div class="row align-items-center no-gutters mb-4 mb-lg-5">
+            <div class="col-xl-1 col-lg-7"><img class="img-fluid mb-3 mb-lg-0" src="{{fire.image.url}}" alt="" /></div>                           
+            <table class="table table-striped" style="background-color:white">
+            <thead>
+                <tr>
+                <th scope="col">#</th>
+                <th scope="col">Name</th>
+                <th scope="col">Latitude</th>
+                <th scope="col">Longitude</th>
+                <th scope="col">Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fire in fire_list %}
+                <tr href="/firedetail/{{ fire.id }}">
+                <th scope="row"><a href="/firedetail/{{ fire.id }}">{{ fire.id }}</a></th>
+                <td>{{ fire.name }}</td>
+                <td>{{ fire.latitude }}</td>
+                <td>{{ fire.longitude }}</td>
+                <td>{{ fire.timestamp }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            </table>
+        </div>
+</section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const rows = document.querySelectorAll("tr[data-href]");
+
+        rows.forEach(rows => {
+            row.addEventListener("click", () => {
+                window.location.href = row.dataset.href;
+            });
+        });
+    });
+</script>
 
 {% endblock content %}
+
