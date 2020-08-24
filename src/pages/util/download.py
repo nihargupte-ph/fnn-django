@@ -4,8 +4,8 @@ import xarray
 import logging
 
 # Custom imports
-from detect_fires import config
-from detect_fires.predict import clip_xds_cali, normalize_xds
+from pages.util import config 
+from pages.util.predict import clip_xds_cali, normalize_xds
 
 
 def parse_blobpath(blob_path):
@@ -112,6 +112,3 @@ def download_GLM_goes16_data(objectId):
         return
 
     return filepath
-
-# os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = config.API_KEY
-# donwload_goes16_ABIRadC_data("ABI-L1b-RadC/2020/222/03/OR_ABI-L1b-RadC-M6C14_G16_s20202220351190_e20202220353563_c20202220354014.nc")

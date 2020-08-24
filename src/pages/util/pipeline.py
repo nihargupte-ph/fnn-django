@@ -7,11 +7,11 @@ import os
 import pickle
 
 # Custom Imports
-from detect_fires import config 
-from detect_fires import misc_functions
-from detect_fires.nn import nn7
-from detect_fires import predict
-from detect_fires import download
+from pages.util import config
+from pages.util import misc_functions
+from pages.util.nn import nn7
+from pages.util import predict
+from pages.util import download
 
 def get_associate_ABI(xds_path):
     """
@@ -149,9 +149,8 @@ def callback(message):
     """
     
     # Getting relavent bands 
-    # band_path = filter_band(message)
+    band_path = filter_band(message)
 
-    band_path = (7, 'ABI-L1b-RadC/2020/232/21/OR_ABI-L1b-RadC-M6C07_G16_s20202322111183_e20202322113567_c20202322114083.nc')
 
     if band_path[0] == None:
         message.ack()
@@ -170,7 +169,10 @@ def callback(message):
     else:
         raise Exception("Unkonwn message recieved")
 
-    # Combining
+    if path == None:
+        message.nack()
+        return 
+        
     bandpath_dct = get_associate_ABI(path)
     if bandpath_dct == None:
         message.ack()
@@ -179,27 +181,26 @@ def callback(message):
         predict.classify(bandpath_dct)
 
 
-if __name__ == "__main__":
+def pipeline():
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = config.API_KEY
     logging.basicConfig(level=logging.INFO)
-    callback('asdf')
 
+    project_id = "fire-neural-network"
+    subscription_id = "goes16-ABI-data-sub-filtered"
 
-    # project_id = "fire-neural-network"
-    # subscription_id = "goes16-ABI-data-sub-filtered"
+    subscriber = pubsub_v1.SubscriberClient()
+    subscription_path = subscriber.subscription_path(project_id, subscription_id)
+    streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
+    print("Listening for messages on {}..\n".format(subscription_path))
 
-    # subscriber = pubsub_v1.SubscriberClient()
-    # subscription_path = subscriber.subscription_path(project_id, subscription_id)
-    # streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
-    # print("Listening for messages on {}..\n".format(subscription_path))
-
-    # # Wrap subscriber in a 'with' block to automatically call close() when done.
-    # with subscriber:
-    #     try:
-    #         # When `timeout` is not set, result() will block indefinitely,
-    #         # unless an exception is encountered first.
-    #         streaming_pull_future.result()
-    #     except TimeoutError:
-    #         streaming_pull_future.cancel()
+    # Wrap subscriber in a 'with' block to automatically call close() when done.
+    with subscriber:
+        try:
+            # When `timeout` is not set, result() will block indefinitely,
+            # unless an exception is encountered first.
+            streaming_pull_future.result()
+        except TimeoutError:
+            streaming_pull_future.cancel()
 
 # gcloud beta pubsub subscriptions create goes16-ABI-data-sub-filtered --project fire-neural-network --topic projects/gcp-public-data---goes-16/topics/gcp-public-data-goes-16 --message-filter='hasPrefix(attributes.objectId,"ABI-L1b-RadC/")' --enable-message-ordering
+# gcloud pubsub subscriptions seek projects/fire-neural-network/subscriptions/goes16-ABI-data-sub-filtered --time=$(date +%Y-%m-%dT%H:%M:%S) 

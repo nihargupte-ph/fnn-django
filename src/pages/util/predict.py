@@ -10,9 +10,13 @@ import sys
 import logging
 import time
 
-from detect_fires import config
-from detect_fires.nn import nn7
-from detect_fires import misc_functions
+from django.core.management import call_command
+from django.core import management
+
+from pages.util import config 
+from pages.util import misc_functions
+from pages.util.nn import nn7
+from pages.models import FireModel
 
 def predict_xds(xds_path, nn):
     """ 
@@ -217,62 +221,71 @@ def predict_cloud(actual_xds_path, cloud_value=1, num_before=8):
 
     return cloud_path
 
+
 def classify(bandpath_dct):
     """ 
     Parameters
     ----------
     bandpath_dct : dict
         dictionary containing paths of predicted xarray and cloud xarray
-
-    cloud_xds_path : str
-        path to the xarray.Dataset/netCDF4 file which contains cloud truth array
-
-    Returns  
-    ----------
-    new_fires_lst : list
-        List of fires detected. Note will return empty if no new fires are detected. If new fires
-        are detected then will return a list of form [(lon, lat, timestamp, location of fire in db)]
     """
-    # Extacting filepaths from tuple
-    diff_xds_path = bandpath_dct['diff']
-    cloud_xds_path = bandpath_dct['cloud']
 
-    diff_basename = os.path.basename(diff_xds_path)
-    cloud_basename = os.path.basename(cloud_xds_path)
-    diff_xds = xarray.open_dataset(diff_xds_path)
-    cloud_xds = xarray.open_dataset(cloud_xds_path)
+    def get_anomalies(bandpath_dct):
+        """ 
+        Parameters
+        ----------
+        bandpath_dct : dict
+            dictionary containing paths of predicted xarray and cloud xarray
 
-    cloud_conf, non_cloud_conf = .55, .17
-    cloud_conf = np.full([diff_xds.Rad.values.shape[0], diff_xds.Rad.values.shape[1]], cloud_conf)
-    non_cloud_conf = np.full([diff_xds.Rad.values.shape[0], diff_xds.Rad.values.shape[1]], non_cloud_conf)
+        Returns  
+        ----------
+        ret : tuple
+            Tuple of form (list of form [(lon, lat)] of anomalies detected, anomaly time)
+        """
+        # Extacting filepaths from tuple
+        diff_xds_path = bandpath_dct['diff']
+        cloud_xds_path = bandpath_dct['cloud']
 
-    # Edges have nan values so we can't predict
-    nan_truth_arr = np.full(shape=diff_xds.Rad.values.shape, fill_value=True, dtype=bool)
-    nan_args = np.where(np.isnan(diff_xds.Rad.values))
-    nan_truth_arr[nan_args] = False
+        diff_basename = os.path.basename(diff_xds_path)
+        cloud_basename = os.path.basename(cloud_xds_path)
+        diff_xds = xarray.open_dataset(diff_xds_path)
+        cloud_xds = xarray.open_dataset(cloud_xds_path)
 
-    # Finding where the confidence interval is exceeded for clouded areas
-    cloud_truth = diff_xds.Rad.values > cloud_conf
-    cloud_truth = np.logical_and(cloud_truth, ~cloud_xds.Cloud.values)
+        cloud_conf, non_cloud_conf = .55, .17
+        cloud_conf = np.full([diff_xds.Rad.values.shape[0], diff_xds.Rad.values.shape[1]], cloud_conf)
+        non_cloud_conf = np.full([diff_xds.Rad.values.shape[0], diff_xds.Rad.values.shape[1]], non_cloud_conf)
 
-    # Finding where the confidence interval is exceeded for non-clouded areas
-    non_cloud_truth = diff_xds.Rad.values > non_cloud_conf
-    non_cloud_truth = np.logical_and(non_cloud_truth, cloud_xds.Cloud.values)
+        # Edges have nan values so we can't predict
+        nan_truth_arr = np.full(shape=diff_xds.Rad.values.shape, fill_value=True, dtype=bool)
+        nan_args = np.where(np.isnan(diff_xds.Rad.values))
+        nan_truth_arr[nan_args] = False
 
-    # Combining
-    truth_arr = np.logical_or(cloud_truth, non_cloud_truth)
-    truth_arr = np.logical_and(truth_arr, nan_truth_arr)
+        # Finding where the confidence interval is exceeded for clouded areas
+        cloud_truth = diff_xds.Rad.values > cloud_conf
+        cloud_truth = np.logical_and(cloud_truth, ~cloud_xds.Cloud.values)
 
-    # Getting lat lon time idxs
-    lat_idxs, lon_idxs = np.where(truth_arr == True)
-    anomaly_lats, anomaly_lons = diff_xds.y.values[lat_idxs], diff_xds.x.values[lon_idxs]
-    anomaly_time = diff_xds.t.values
+        # Finding where the confidence interval is exceeded for non-clouded areas
+        non_cloud_truth = diff_xds.Rad.values > non_cloud_conf
+        non_cloud_truth = np.logical_and(non_cloud_truth, cloud_xds.Cloud.values)
 
-    print(len(lat_idxs))
-    print(truth_arr.shape[0] * truth_arr.shape[1])
+        # Combining
+        truth_arr = np.logical_or(cloud_truth, non_cloud_truth)
+        truth_arr = np.logical_and(truth_arr, nan_truth_arr)
 
-    diff_xds.close()
-    cloud_xds.close()
+        # Getting lat lon time idxs
+        lat_idxs, lon_idxs = np.where(truth_arr == True)
+        anomaly_lats, anomaly_lons = diff_xds.y.values[lat_idxs], diff_xds.x.values[lon_idxs]
+        anomaly_time = diff_xds.t.values
+
+        diff_xds.close()
+        cloud_xds.close()
+
+        ret = (list(zip(anomaly_lats, anomaly_lats)), anomaly_time)
+        return ret
+
+    # anomaly_lst = get_anomalies(bandpath_dct)
+
+    print(FireModel.objects.all())
 
     # Deleting files now that we have used one "group" of data
     # closest_band14_file = misc_functions.find_closest_file(basename, os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_14'))
@@ -292,7 +305,3 @@ def classify(bandpath_dct):
     # except:
     #     logging.error("Unable to delete files" + str(sys.exc_info()[0]))
 
-
-# import matplotlib.pyplot as plt
-# dct = {'diff': '/home/n/Documents/Research/fnn/media/ABI_RadC/pred/diff/OR_ABI-L1b-RadC-M6C07_G16_s20202322116183_e20202322118567_c20202322119084.nc', 'cloud': '/home/n/Documents/Research/fnn/media/ABI_RadC/pred/cloud/OR_ABI-L1b-RadC-M6C14_G16_s20202322116183_e20202322118556_c20202322119072.nc'}
-# classify(dct)

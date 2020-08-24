@@ -4,7 +4,7 @@ import datetime
 import time
 import logging
 
-from detect_fires import config
+from pages.util import config
 
 def dt64_to_timestamp(dt):
     """ Parameters
