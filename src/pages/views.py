@@ -55,3 +55,5 @@ def how_it_works_view(request):
     context = {}
     return render(request, "howitworks.html", context)
 
+def index(request):
+    return HttpResponse('Done!')

@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     # Third Party
 
     # Custom
-    "pages",
+    'pages',
 ]
 
 MIDDLEWARE = [
