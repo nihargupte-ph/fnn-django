@@ -1,15 +1,19 @@
 import os
-import geopandas as gpd
-import xarray
-from skimage.util.shape import view_as_windows
+import datetime
 import numpy as np
-import xarray
-from pyproj import CRS
-import rioxarray
 import sys
 import logging
 import time
+import pickle
 
+import geopy.distance
+import geopandas as gpd
+from skimage.util.shape import view_as_windows
+from pyproj import CRS
+import rioxarray
+from sklearn.cluster import DBSCAN
+from sklearn.neighbors import BallTree
+import xarray
 from django.core.management import call_command
 from django.core import management
 
@@ -32,7 +36,6 @@ def predict_xds(xds_path, nn):
     pred_xds : xaray.Dataset
         predicted dataset
     """
-
     try:
         filepath_dict = misc_functions.closest_dates(xds_path, nn.prev_time_measurements, nn.important_bands)
     except:
@@ -65,6 +68,7 @@ def predict_xds(xds_path, nn):
 
     # Replacing xds.Rad with prediction
     pred_xds.Rad.values = prediction
+
     return pred_xds
 
 def normalize_xds(xds, proj="EPSG:4326"):
@@ -131,7 +135,7 @@ def predict_xarray(actual_xds_path):
     Returns  
     ----------
     ret : str
-        path to predicted xarray
+        path to difference array
     """
     logging.info('entered prediction')
     nn = nn7()
@@ -147,30 +151,33 @@ def predict_xarray(actual_xds_path):
         raise Exception("Unable to predict xarray")
 
     basename = os.path.basename(actual_xds_path)
-    diff_xds = pred_xds.copy()
     actual_xds = xarray.open_dataset(actual_xds_path)
+    diff_xds = actual_xds.copy()
     diff_xds.Rad.values = actual_xds.Rad.values - pred_xds.Rad.values
+    
     logging.info("Successfully calculated difference xarray")
 
     pred_path = os.path.join(config.NC_DATA_FOLDER, "ABI_RadC", "pred", 'pred', basename)
+    if os.path.exists(pred_path):
+        os.remove(pred_path)
     pred_xds.to_netcdf(path=pred_path)
     logging.info(f"Successfully saved predicted xarray at {pred_path}")
     diff_path = os.path.join(config.NC_DATA_FOLDER, "ABI_RadC", 'pred', "diff", basename)
-    diff_xds.to_netcdf(path=diff_path)
-    logging.info(f"Successfully saved difference xarray at {diff_path}")
-    
-    import matplotlib.pyplot as plt
-    fig, axs = plt.subplots(3)
-    xds = xarray.open_dataset(actual_xds_path)
-    pred_xds.Rad.plot(ax=axs[0])
-    xds.Rad.plot(ax=axs[1])
-    diff_xds.Rad.plot(ax=axs[2])
-    plt.show()
+    if os.path.exists(diff_path):
+        os.remove(diff_path)
 
-    pred_xds.close()
+    import matplotlib.pyplot as plt
+    diff_xds.Rad.plot()
+    plt.show()
+    diff_xds.to_netcdf(store=diff_path)
+    exit()
+
+    logging.info(f"Successfully saved difference xarray at {diff_path}")
+
+    
     actual_xds.close()
 
-    return actual_xds_path
+    return diff_path
         
 def predict_cloud(actual_xds_path, cloud_value=1, num_before=8):
     """ 
@@ -221,7 +228,6 @@ def predict_cloud(actual_xds_path, cloud_value=1, num_before=8):
 
     return cloud_path
 
-
 def classify(bandpath_dct):
     """ 
     Parameters
@@ -239,8 +245,8 @@ def classify(bandpath_dct):
 
         Returns  
         ----------
-        ret : tuple
-            Tuple of form (list of form [(lon, lat)] of anomalies detected, anomaly time)
+        ret : list
+            List of form (lon, lat, datetime.datetime) of anomalies detected
         """
         # Extacting filepaths from tuple
         diff_xds_path = bandpath_dct['diff']
@@ -280,28 +286,135 @@ def classify(bandpath_dct):
         diff_xds.close()
         cloud_xds.close()
 
-        ret = (list(zip(anomaly_lats, anomaly_lats)), anomaly_time)
+        dt = datetime.datetime.utcfromtimestamp(misc_functions.dt64_to_timestamp(anomaly_time))
+        ret = list(zip(anomaly_lons, anomaly_lats, [dt for _ in anomaly_lats]))
         return ret
 
-    # anomaly_lst = get_anomalies(bandpath_dct)
 
-    print(FireModel.objects.all())
+    def cluster_anomalies(anomaly_lst):
+        """ 
+        Parameters
+        ----------
+        anomaly_lst : list
+            list of anomalies of form (lon, lat)
+
+        Returns  
+        ----------
+        cluster_lst : list
+            list of np.arrays which were clustered with DBSCAN 
+        """
+
+        def km_distance_thresh(x, y):
+            """ Returns 0 if within threshold and 1 if outside """
+            dist = geopy.distance.distance((x[1], x[0]), (y[1], y[0])).km
+            if dist < 10:  # km
+                return .1
+            else:
+                return 1
+
+        anomaly_arr = np.array(anomaly_lst)
+        db = DBSCAN(eps=.11, metric=km_distance_thresh, min_samples=2).fit(anomaly_arr)
+        n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
+        unique_labels = set(db.labels_)
+
+        cluster_lst = []
+        for k in unique_labels:
+            cluster_idxs = np.where(db.labels_ == k)
+            cluster = anomaly_arr[cluster_idxs]
+            cluster_lst.append(cluster)
+
+        return cluster_lst
+
+
+    logging.info('Entered classification')
+    try:
+        anomaly_lst = get_anomalies(bandpath_dct)
+        logging.info(f"Got anomalies. {len(anomaly_lst)} anomalies detected")
+    except:
+        logging.critical("Unable to get anomalies")
+    anomaly_time = anomaly_lst[0][-1]
+
+    anomaly_lst = anomaly_lst[:100] #NOTE TEMP
+
+    space_anomaly_lst = [(i[0], i[1]) for i in anomaly_lst]
+    try: 
+        cluster_lst = cluster_anomalies(space_anomaly_lst)
+        logging.info(f"Clustered anomalies. {len(cluster_lst)} clusters formed")
+    except:
+        logging.critical("Unable to cluster anomalies")
+    cluster_lst = [np.hstack((cluster, np.full(shape=(cluster.shape[0], 1), fill_value=anomaly_time))) for cluster in cluster_lst]
+
+    found_center_lst = []
+    for cluster in cluster_lst:
+        found_lon = np.mean([i[0] for i in cluster])
+        found_lat = np.mean([i[1] for i in cluster])
+        found_center_lst.append((np.deg2rad(found_lat), np.deg2rad(found_lon)))
+    
+    time_filter = anomaly_time - datetime.timedelta(hours=1)
+    queried_fires = FireModel.objects.filter(latest_timestamp__gt=time_filter)
+
+    queried_center_lst = []
+    for fire in queried_fires:
+        query_cluster_lst = misc_functions.binfield_to_obj(fire.cluster_lst)
+        recent_cluster = query_cluster_lst[-1] # NOTE maybe should be changed to previous 2 clusters but left as 1 for now
+        recent_lon = np.mean([i[0] for i in recent_cluster])
+        recent_lat = np.mean([i[1] for i in recent_cluster])
+        queried_center_lst.append((np.deg2rad(recent_lat), np.deg2rad(recent_lon)))
+
+    # Use ball tree to link the found cluster centers w/ the recent cluster centers
+    if not len(queried_center_lst) == 0:
+        tree = BallTree(np.array(queried_center_lst), leaf_size=2, metric='haversine')
+        dist, index = tree.query(np.array(found_center_lst), k=1)
+        logging.info('Constructed BallTree for linking old fires')
+
+        for i, (ind,d) in enumerate(zip(index, dist)):
+            d *= 6371 # convert to km
+            cluster = cluster_lst[i]
+            if d < 10:
+                fire = queried_fires[int(ind)]
+                misc_functions.update_FireModel(cluster, fire)
+                logging.info("Updated fire")
+            else:
+                misc_functions.cluster_to_FireModel(cluster)
+                logging.info("Created new fire")
+    else:
+        for cluster in cluster_lst:
+            misc_functions.cluster_to_FireModel(cluster)
+            logging.info("Created new fire")
+
+    # Writing that we predicted using the file in classified_lst.pkl
+    with open(os.path.join(config.NC_DATA_FOLDER, 'misc', 'classified_lst.pkl'), 'rb') as f:
+        classified_lst = pickle.load(f)
+    # If the list is too long we want to clear the first 50 or so entries
+    if len(classified_lst) > 100:
+        classified_lst = classified_lst[:50]
+    classified_lst.append(os.path.basename(bandpath_dct['diff']))
+    with open(os.path.join(config.NC_DATA_FOLDER, 'misc', 'classified_lst.pkl'), 'wb') as f:
+        pickle.dump(classified_lst, f)
 
     # Deleting files now that we have used one "group" of data
-    # closest_band14_file = misc_functions.find_closest_file(basename, os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_14'))
+    # Removing oldest file in actual, prediction, diff, and cloud array if we have at least 12 files (only band 7)
+    max_files = 12
+    folder_lst = [
+        os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_7'), 
+        os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_14'), 
+        os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'diff'), 
+        os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'pred'), 
+        os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'cloud'),
+        ]
 
-    # classify("/home/n/Documents/Research/fnn/media/ABI_RadC/pred/diff/OR_ABI-L1b-RadC-M6C07_G16_s20202250521181_e20202250523566_c20202250524075.nc")
+    # If every folder has more than enough files
+    try:
+        if all(len(folder) == max_files for folder in folder_lst):
+            for folder in folder_lst:
+                os.remove(misc_functions.find_oldest_file(folder))
+            logging.info(f"Successfully deleted oldest files from {folder_lst}")
+    except:
+        logging.error("Unable to delete files\n" + str(sys.exc_info()[0]))
 
-    # # Removing oldest file in actual, prediction, diff, and cloud array if we have at least 12 files (only band 7)
-    # max_files = 12
-    # folder_lst = [os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_7'), os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'diff'), os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'pred'), os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'cloud')]
 
-    # # If every folder has more than enough files
-    # try:
-    #     if (len(os.listdir(folder_lst[0])) > max_files) and (len(os.listdir(folder_lst[1])) > max_files) and (len(os.listdir(folder_lst[2])) > max_files) and (len(os.listdir(folder_lst[3])) > max_files):
-    #         for folder in folder_lst:
-    #             os.remove(misc_functions.find_oldest_file())
-    #         logging.info(f"Successfully deleted oldest files from {folder_lst}")
-    # except:
-    #     logging.error("Unable to delete files" + str(sys.exc_info()[0]))
-
+# TMP
+# import xarray
+# import matplotlib.pyplot as plt
+# xds = xarray.open_dataset('/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff/OR_ABI-L1b-RadC-M6C07_G16_s20202391911173_e20202391913557_c20202391914083.nc')
+# xds.Rad.plot()

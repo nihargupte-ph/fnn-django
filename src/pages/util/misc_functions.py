@@ -2,7 +2,9 @@ import numpy as np
 import os
 import datetime
 import time
+import pickle
 import logging
+import base64
 
 from pages.util import config
 
@@ -106,7 +108,7 @@ def find_oldest_file(folder):
     filepath : str
         filepath of oldest file
     """
-    file_pair = [(parse_goes16_file(filename)[1], filename) for filename in os.listdir(folder)]
+    file_pair = [(key_from_filestring(filename), filename) for filename in os.listdir(folder)]
     file_pair = sorted(file_pair, key=lambda x: x[0])
     return file_pair[1][1]
 
@@ -142,3 +144,107 @@ def key_from_filestring(file_string):
     file_string = os.path.basename(file_string)
     key = ((file_string[file_string.find("s")+1:file_string.find("_e")]))
     return key
+
+def binfield_to_obj(bin_field):
+    """ 
+    Parameters
+    ----------
+    bin_field : models.BinaryField
+        django binary field 
+
+    Returns  
+    ----------
+    obj : obj
+        numpy array or list created from django binary field
+    """
+    np_bytes = base64.b64decode(bin_field)
+    obj = pickle.loads(np_bytes)
+    return obj
+
+def obj_to_binfield(obj):
+    """ 
+    Parameters
+    ----------
+    obj : obj
+        numpy array or list
+
+    Returns  
+    ----------
+    bin_field : models.BinaryField
+        Django binary field
+    """
+    np_bytes = pickle.dumps(obj)
+    np_base64 = base64.b64encode(np_bytes)
+    
+    return np_base64
+
+def cluster_to_FireModel(cluster):
+    """ 
+    Parameters
+    ----------
+    cluster : np.array
+        numpy array containing a list of anomalies of form (lon, lat, timestamp)
+        will add the anomalies to a newly created FireModel
+    """
+    from pages.models import FireModel
+
+    # Intial lon, lat, and timestamp is average of first cluster
+    avg_lat = np.mean(cluster[:, 0])
+    avg_lon = np.mean(cluster[:, 1])
+    avg_timestamp = datetime.datetime.utcfromtimestamp(np.mean([dt.timestamp() for dt in cluster[:, 2]]))
+
+    # Anomaly list
+    anom_arr_bin = obj_to_binfield(cluster.flatten())
+
+    # Cluster list, we wrap in a list as when more clusters are added we want to append them to the array
+    cluster_lst_bin = obj_to_binfield([cluster])
+
+    # TODO Insert Picture taking here
+
+    # TODO Insert Causes here
+
+    # TODO Insert names, short_description, long_description, probability here
+    
+    FireModel.objects.create(
+        longitude=avg_lon,
+        latitude=avg_lat,
+        timestamp=avg_timestamp,
+        latest_timestamp=avg_timestamp, 
+        anomaly_arr=anom_arr_bin,
+        cluster_lst=cluster_lst_bin,
+    )
+
+def update_FireModel(cluster, fire):
+    """ 
+    Parameters
+    ----------
+    cluster : np.array
+        numpy array containing a list of anomalies FireModel
+    fire : pages.models.FireModel
+        firemodel we are updating
+    """
+    # Add new cluster to end of cluster list
+    current_cluster_lst = binfield_to_obj(fire.cluster_lst)
+    current_cluster_lst.append(cluster)    
+
+    # Add current anomaly list to old anomaly list
+    current_anomaly_arr = binfield_to_obj(fire.anomaly_arr)
+    current_anomaly_arr = np.append(current_anomaly_arr, cluster.flatten(), 0)
+    avg_timestamp = datetime.datetime.utcfromtimestamp(np.mean([dt.timestamp() for dt in cluster[:, 2]]))
+    
+    # Update fire model
+    fire.cluster_lst = obj_to_binfield(current_cluster_lst)
+    fire.anomaly_arr = obj_to_binfield(current_anomaly_arr)
+    fire.latest_timestamp = avg_timestamp
+    
+    fire.save()
+
+def update_picture():
+    # TODO
+    pass
+
+def test_cluster():
+    lons = np.random.randint(low=-120, high=-100, size=10)
+    lats = np.random.randint(low=30, high=45, size=10)
+    timestamp = datetime.datetime.utcnow()
+    return np.array(list(zip(lons, lats, [timestamp for _ in lons])))

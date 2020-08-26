@@ -1,10 +1,13 @@
 # Standard Imports
-from concurrent.futures import TimeoutError
-from google.cloud import pubsub_v1
 import datetime
 import logging
 import os
 import pickle
+
+# Third Party imports
+from concurrent.futures import TimeoutError
+from google.cloud import pubsub_v1
+import tensorflow as tf
 
 # Custom Imports
 from pages.util import config
@@ -30,7 +33,6 @@ def get_associate_ABI(xds_path):
         Will return None if the associated filepath is not found or if we have already used 
         the band 7 file to classify fires
     """
-    
     orig_key = misc_functions.key_from_filestring(xds_path)
 
     if 'C07_G16' in xds_path:
@@ -51,23 +53,25 @@ def get_associate_ABI(xds_path):
         associate_path = os.path.join(associate_folder, associate_file)
 
         # If we have already used the file to classify then we don't want to reuse
+        # We determine if we already have the file by checking the classified_lst 
+        with open(os.path.join(config.NC_DATA_FOLDER, 'misc', 'classified_lst.pkl'), 'rb') as f:
+            classified_lst = pickle.load(f)
         if band_id == 7:
-            with open(os.path.join(config.NC_DATA_FOLDER, 'misc', 'classified_lst.pkl'), 'rb') as f:
-                lst = pickle.load(f)
-                if xds_path in lst:
-                    return
-                else:
-                    ret = {'diff':xds_path, 'cloud':associate_path}
-                    return ret
+            if os.path.basename(xds_path) in classified_lst:
+                return 
+            else:
+                logging.info("Got associate path")
+                ret = {'diff':xds_path, 'cloud':associate_path}
         elif band_id == 14:
-            with open(os.path.join(config.NC_DATA_FOLDER, 'misc', 'classified_lst.pkl'), 'rb') as f:
-                lst = pickle.load(f)
-                if associate_path in lst:
-                    return 
-                else:
-                    ret = {'diff':associate_path, 'cloud':xds_path}
-                    return ret
+            if os.path.basename(associate_path) in classified_lst:
+                return 
+            else:
+                logging.info("Got associate path")
+                ret = {'diff':associate_path, 'cloud':xds_path}
 
+        return ret
+
+    # We don't have the associate path yet
     return 
 
 def band_7_process(objectId):
@@ -136,6 +140,22 @@ def filter_band(message):
         ret = (None, objectId)
         return ret
 
+def clear_folders():
+    """ 
+    Clears all folders before starting pipeline
+    """
+    folder_lst = [
+    os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_7'), 
+    os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_14'), 
+    os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'diff'), 
+    os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'pred'), 
+    os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'cloud'),
+    ]
+
+    for folder in folder_lst:
+        for f in os.listdir(folder):
+            os.remove(os.path.join(folder, f))
+
 def callback(message):
     """
     Parameters
@@ -149,8 +169,8 @@ def callback(message):
     """
     
     # Getting relavent bands 
-    band_path = filter_band(message)
-
+    # band_path = filter_band(message)
+    band_path = (7, 'ABI-L1b-RadC/2020/239/19/OR_ABI-L1b-RadC-M6C07_G16_s20202391911173_e20202391913557_c20202391914083.nc')
 
     if band_path[0] == None:
         message.ack()
@@ -160,11 +180,12 @@ def callback(message):
     elif band_path[0] == 7:
         logging.info("Band 7 message recieved")
         path = band_7_process(band_path[1])
-
+        # message.ack()
 
     elif band_path[0] == 14:
         logging.info("Band 14 message recieved")
         path = band_14_process(band_path[1])
+        # message.ack()
 
     else:
         raise Exception("Unkonwn message recieved")
@@ -172,35 +193,46 @@ def callback(message):
     if path == None:
         message.nack()
         return 
-        
+    
     bandpath_dct = get_associate_ABI(path)
+    # bandpath_dct = {
+    #     'diff':'/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff/OR_ABI-L1b-RadC-M6C07_G16_s20202391911173_e20202391913557_c20202391914083.nc',
+    #     'cloud':'/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud/OR_ABI-L1b-RadC-M6C14_G16_s20202391911173_e20202391913546_c20202391914089.nc'
+    # }
     if bandpath_dct == None:
-        message.ack()
         return
     else:
         predict.classify(bandpath_dct)
-
+        return
 
 def pipeline():
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = config.API_KEY
     logging.basicConfig(level=logging.INFO)
 
-    project_id = "fire-neural-network"
-    subscription_id = "goes16-ABI-data-sub-filtered"
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+    callback('hi')
 
-    subscriber = pubsub_v1.SubscriberClient()
-    subscription_path = subscriber.subscription_path(project_id, subscription_id)
-    streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
-    print("Listening for messages on {}..\n".format(subscription_path))
+    # project_id = "fire-neural-network"
+    # subscription_id = "goes16-ABI-data-sub-filtered"
+
+    # subscriber = pubsub_v1.SubscriberClient()
+    # subscription_path = subscriber.subscription_path(project_id, subscription_id)
+    # streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
+    # try: 
+    #     clear_folders()
+    #     logging.info("Successfully cleared folders")
+    # except:
+    #     logging.critical("Unable to clear folders")
+    # logging.info("Listening for messages on {}..\n".format(subscription_path))
 
     # Wrap subscriber in a 'with' block to automatically call close() when done.
-    with subscriber:
-        try:
-            # When `timeout` is not set, result() will block indefinitely,
-            # unless an exception is encountered first.
-            streaming_pull_future.result()
-        except TimeoutError:
-            streaming_pull_future.cancel()
+    # with subscriber:
+    #     try:
+    #         # When `timeout` is not set, result() will block indefinitely,
+    #         # unless an exception is encountered first.
+    #         streaming_pull_future.result()
+    #     except TimeoutError:
+    #         streaming_pull_future.cancel()
 
 # gcloud beta pubsub subscriptions create goes16-ABI-data-sub-filtered --project fire-neural-network --topic projects/gcp-public-data---goes-16/topics/gcp-public-data-goes-16 --message-filter='hasPrefix(attributes.objectId,"ABI-L1b-RadC/")' --enable-message-ordering
 # gcloud pubsub subscriptions seek projects/fire-neural-network/subscriptions/goes16-ABI-data-sub-filtered --time=$(date +%Y-%m-%dT%H:%M:%S) 
