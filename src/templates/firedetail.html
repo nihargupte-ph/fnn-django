@@ -5,12 +5,14 @@
     <div class="container">
         <!-- Featured Project Row-->
         <div class="row align-items-center no-gutters mb-4 mb-lg-5">
+            {{fire.image.url}}
+            <img src="/media/home/n/Documents/Research/fnn-django/src/media/fire_pictures/ppvysucgpdxjokl">
             <div class="col-xl-9 col-lg-7"><img class="img-fluid mb-3 mb-lg-0" src="{{fire.image.url}}" alt="" /></div>
             <div class="col-xl-3 col-lg-5">
                 <div class="featured-text text-center text-lg-left">
                     <h4 class="text-white">{{fire.name}}</h4>
-                    <p class="text-white-50 mb-0">Latitude: {{fire.latitude}}</p>
-                    <p class="text-white-50 mb-0">Longitude: {{fire.longitude}}</p>
+                    <p class="text-white-50 mb-0">Latitude: {{fire.latitude|floatformat:3}}</p>
+                    <p class="text-white-50 mb-0">Longitude: {{fire.longitude|floatformat:3}}</p>
                     <p class="text-white-50 mb-0">Timestamp: {{fire.timestamp}}</p>
                     <p class="text-white-50 mb-0"> Description: {{fire.short_description}}</p>
                     <p class="text-white-50 mb-0">Cause: {{fire.cause}}</p>

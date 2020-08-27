@@ -5,8 +5,32 @@ import time
 import pickle
 import logging
 import base64
+import matplotlib.pyplot as plt
+import matplotlib
+import string
+import random
+
+import xarray
+from pyproj import CRS
+import rioxarray
 
 from pages.util import config
+
+def mini_normalize(xds):
+    """ 
+    Parameters
+    ----------
+    xds : xarray.Dataset
+        Dataset we want to mini normalize
+
+    Return
+    ----------
+    xds : xarray.Dataset
+        mini normalized xarray.Dataset
+    """
+    cc = CRS.from_cf(xds.goes_imager_projection.attrs)
+    xds.rio.write_crs(cc.to_string(), inplace=True)
+    return xds
 
 def dt64_to_timestamp(dt):
     """ Parameters
@@ -178,19 +202,71 @@ def obj_to_binfield(obj):
     
     return np_base64
 
-def cluster_to_FireModel(cluster):
+def geodesic_point_buffer(lon, lat, km):
+
+    from pyproj import Transformer
+    from shapely.geometry import Point, mapping
+    from shapely.ops import transform
+    from functools import partial
+
+    # Azimuthal equidistant projection
+    aeqd_proj = f"+proj=aeqd +lat_0={lat} +lon_0={lon} +x_0=0 +y_0=0"
+    transformer = Transformer.from_crs("EPSG:4326", aeqd_proj, always_xy=True)
+    point = Point(lon, lat)
+    point_aeqd = transform(transformer.transform, point)
+    circle_aeqd = point_aeqd.buffer(km * 1000)
+    return mapping(transform(partial(transformer.transform, direction="INVERSE"), circle_aeqd))
+
+def snap_picture(xds, lon, lat, radius):
+    """ 
+    Parameters
+    ----------
+    xds : xarray.Dataset
+        Dataset we want to take a picture of 
+    lon : float
+        Longitude of the fire
+    lat : float
+        Latitude of the fire
+    radius : float
+        radius in km of image
+    Returns
+    ----------
+    outpath : str
+        Path where the picture was saved
+    """
+    matplotlib.use('Agg')
+
+    xds = xds.rio.reproject("EPSG:3857")
+    buffered_point = geodesic_point_buffer(lon=lon, lat=lat, km=radius)
+    clipped_xds = xds.rio.clip([buffered_point], "EPSG:4326")
+    clipped_xds.Rad.plot(cmap=plt.cm.viridis)
+
+    letters = string.ascii_lowercase
+    result_str = ''.join(random.choice(letters) for i in range(15))
+    outpath = os.path.join(config.MEDIA_FOLDER, 'fire_pictures', result_str)
+    while os.path.exists(outpath):
+        outpath = outpath + random.choice(letters)
+    outpath += 'jpg'
+    plt.savefig(outpath)
+    plt.close()
+    
+    return outpath
+
+def cluster_to_FireModel(cluster, diff_xds_path):
     """ 
     Parameters
     ----------
     cluster : np.array
         numpy array containing a list of anomalies of form (lon, lat, timestamp)
         will add the anomalies to a newly created FireModel
+    diff_xds_path : str
+        Path to diff_xds that we just predicted
     """
     from pages.models import FireModel
 
     # Intial lon, lat, and timestamp is average of first cluster
-    avg_lat = np.mean(cluster[:, 0])
-    avg_lon = np.mean(cluster[:, 1])
+    avg_lon = np.mean(cluster[:, 0])
+    avg_lat = np.mean(cluster[:, 1])
     avg_timestamp = datetime.datetime.utcfromtimestamp(np.mean([dt.timestamp() for dt in cluster[:, 2]]))
 
     # Anomaly list
@@ -200,6 +276,8 @@ def cluster_to_FireModel(cluster):
     cluster_lst_bin = obj_to_binfield([cluster])
 
     # TODO Insert Picture taking here
+    xds = xarray.open_dataset(diff_xds_path)
+    pic_path = snap_picture(xds, avg_lon, avg_lat, 20)
 
     # TODO Insert Causes here
 
@@ -212,6 +290,7 @@ def cluster_to_FireModel(cluster):
         latest_timestamp=avg_timestamp, 
         anomaly_arr=anom_arr_bin,
         cluster_lst=cluster_lst_bin,
+        image=pic_path, 
     )
 
 def update_FireModel(cluster, fire):

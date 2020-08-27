@@ -152,9 +152,60 @@ def predict_xarray(actual_xds_path):
 
     basename = os.path.basename(actual_xds_path)
     actual_xds = xarray.open_dataset(actual_xds_path)
-    diff_xds = actual_xds.copy()
-    diff_xds.Rad.values = actual_xds.Rad.values - pred_xds.Rad.values
     
+    # I would have liked to create a copy with actual_xds.copy() and change only the Rad value. However, when saving with to_netcdf the fire 
+    # miraculously changes so for now this is the workaround. A manuel copy. NOTE t is in coords as I couldn't figure out how to make a proper
+    # datavar
+    diff_xds = xarray.Dataset(
+            data_vars={
+                "Rad": (("y", "x"), actual_xds.Rad.values - pred_xds.Rad.values),
+                "DQF": (("y", "x"), actual_xds.DQF.values - pred_xds.DQF.values),
+                },
+            coords={
+                "x": actual_xds.x,
+                "y": actual_xds.y,
+                "x_image": actual_xds.x_image,
+                "y_image": actual_xds.y_image,
+                "t": actual_xds.t,
+                "goes_imager_projection": actual_xds.goes_imager_projection
+            },
+            attrs={
+                "naming_authority": actual_xds.naming_authority,
+                "Conventions": actual_xds.Conventions,
+                "standard_name_vocabulary": actual_xds.standard_name_vocabulary,
+                "institution": actual_xds.institution,
+                "project": actual_xds.project,
+                "production_site": actual_xds.production_site,
+                "production_environment": actual_xds.production_environment,
+                "spatial_resolution": actual_xds.spatial_resolution,
+                "Metadata_Conventions": actual_xds.Metadata_Conventions,
+                "orbital_slot": actual_xds.orbital_slot,
+                "platform_ID": actual_xds.platform_ID,
+                "instrument_type": actual_xds.instrument_type,
+                "scene_id": actual_xds.scene_id,
+                "instrument_ID": actual_xds.instrument_ID,
+                "title": actual_xds.title, 
+                "summary": actual_xds.summary,
+                "keywords": actual_xds.keywords,
+                "keywords_vocabulary": actual_xds.keywords_vocabulary,
+                "iso_series_metadata_id": actual_xds.iso_series_metadata_id,
+                "license": actual_xds.license,
+                "processing_level": actual_xds.processing_level,
+                "cdm_data_type": actual_xds.cdm_data_type,
+                "dataset_name": actual_xds.dataset_name,
+                "production_data_source": actual_xds.production_data_source,
+                "timeline_id": actual_xds.timeline_id,
+                "date_created": actual_xds.date_created,
+                "time_coverage_start": actual_xds.time_coverage_start, 
+                "time_coverage_end": actual_xds.time_coverage_end,
+                "LUT_Filenames": actual_xds.LUT_Filenames,
+                "id": actual_xds.id,
+                "grid_mapping": actual_xds.grid_mapping
+            }
+        )
+    # Giving a CRS back to the array
+    diff_xds = misc_functions.mini_normalize(diff_xds)
+
     logging.info("Successfully calculated difference xarray")
 
     pred_path = os.path.join(config.NC_DATA_FOLDER, "ABI_RadC", "pred", 'pred', basename)
@@ -165,13 +216,7 @@ def predict_xarray(actual_xds_path):
     diff_path = os.path.join(config.NC_DATA_FOLDER, "ABI_RadC", 'pred', "diff", basename)
     if os.path.exists(diff_path):
         os.remove(diff_path)
-
-    import matplotlib.pyplot as plt
-    diff_xds.Rad.plot()
-    plt.show()
-    diff_xds.to_netcdf(store=diff_path)
-    exit()
-
+    diff_xds.to_netcdf(path=diff_path)
     logging.info(f"Successfully saved difference xarray at {diff_path}")
 
     
@@ -334,8 +379,6 @@ def classify(bandpath_dct):
         logging.critical("Unable to get anomalies")
     anomaly_time = anomaly_lst[0][-1]
 
-    anomaly_lst = anomaly_lst[:100] #NOTE TEMP
-
     space_anomaly_lst = [(i[0], i[1]) for i in anomaly_lst]
     try: 
         cluster_lst = cluster_anomalies(space_anomaly_lst)
@@ -375,21 +418,21 @@ def classify(bandpath_dct):
                 misc_functions.update_FireModel(cluster, fire)
                 logging.info("Updated fire")
             else:
-                misc_functions.cluster_to_FireModel(cluster)
+                misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'])
                 logging.info("Created new fire")
     else:
         for cluster in cluster_lst:
-            misc_functions.cluster_to_FireModel(cluster)
+            misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'])
             logging.info("Created new fire")
 
     # Writing that we predicted using the file in classified_lst.pkl
-    with open(os.path.join(config.NC_DATA_FOLDER, 'misc', 'classified_lst.pkl'), 'rb') as f:
+    with open(os.path.join(config.MEDIA_FOLDER, 'misc', 'classified_lst.pkl'), 'rb') as f:
         classified_lst = pickle.load(f)
     # If the list is too long we want to clear the first 50 or so entries
     if len(classified_lst) > 100:
         classified_lst = classified_lst[:50]
     classified_lst.append(os.path.basename(bandpath_dct['diff']))
-    with open(os.path.join(config.NC_DATA_FOLDER, 'misc', 'classified_lst.pkl'), 'wb') as f:
+    with open(os.path.join(config.MEDIA_FOLDER, 'misc', 'classified_lst.pkl'), 'wb') as f:
         pickle.dump(classified_lst, f)
 
     # Deleting files now that we have used one "group" of data

@@ -21,8 +21,8 @@
                 <tr href="/firedetail/{{ fire.id }}">
                 <th scope="row"><a href="/firedetail/{{ fire.id }}">{{ fire.id }}</a></th>
                 <td>{{ fire.name }}</td>
-                <td>{{ fire.latitude }}</td>
-                <td>{{ fire.longitude }}</td>
+                <td>{{ fire.latitude|floatformat:3 }}</td>
+                <td>{{ fire.longitude|floatformat:3 }}</td>
                 <td>{{ fire.timestamp }}</td>
                 </tr>
                 {% endfor %}

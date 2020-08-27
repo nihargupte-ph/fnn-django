@@ -54,7 +54,7 @@ def get_associate_ABI(xds_path):
 
         # If we have already used the file to classify then we don't want to reuse
         # We determine if we already have the file by checking the classified_lst 
-        with open(os.path.join(config.NC_DATA_FOLDER, 'misc', 'classified_lst.pkl'), 'rb') as f:
+        with open(os.path.join(config.MEDIA_FOLDER, 'misc', 'classified_lst.pkl'), 'rb') as f:
             classified_lst = pickle.load(f)
         if band_id == 7:
             if os.path.basename(xds_path) in classified_lst:
@@ -168,9 +168,13 @@ def callback(message):
 
     """
     
+    # NOTE TEMP
+    with open("/home/n/Documents/Research/fnn-django/src/media/misc/classified_lst.pkl", "wb") as f:
+        pickle.dump([], f)
+
     # Getting relavent bands 
     # band_path = filter_band(message)
-    band_path = (7, 'ABI-L1b-RadC/2020/239/19/OR_ABI-L1b-RadC-M6C07_G16_s20202391911173_e20202391913557_c20202391914083.nc')
+    band_path = (7, 'ABI-L1b-RadC/2020/240/00/OR_ABI-L1b-RadC-M6C07_G16_s20202400056172_e20202400058557_c20202400058597.nc')
 
     if band_path[0] == None:
         message.ack()
@@ -196,8 +200,8 @@ def callback(message):
     
     bandpath_dct = get_associate_ABI(path)
     # bandpath_dct = {
-    #     'diff':'/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff/OR_ABI-L1b-RadC-M6C07_G16_s20202391911173_e20202391913557_c20202391914083.nc',
-    #     'cloud':'/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud/OR_ABI-L1b-RadC-M6C14_G16_s20202391911173_e20202391913546_c20202391914089.nc'
+    #     'diff': '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff/OR_ABI-L1b-RadC-M6C07_G16_s20202400056172_e20202400058557_c20202400058597.nc',
+    #     'cloud': '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud/OR_ABI-L1b-RadC-M6C14_G16_s20202400056172_e20202400058545_c20202400059079.nc'
     # }
     if bandpath_dct == None:
         return
@@ -225,7 +229,7 @@ def pipeline():
     #     logging.critical("Unable to clear folders")
     # logging.info("Listening for messages on {}..\n".format(subscription_path))
 
-    # Wrap subscriber in a 'with' block to automatically call close() when done.
+    # # Wrap subscriber in a 'with' block to automatically call close() when done.
     # with subscriber:
     #     try:
     #         # When `timeout` is not set, result() will block indefinitely,
