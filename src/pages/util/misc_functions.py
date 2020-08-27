@@ -9,12 +9,33 @@ import matplotlib.pyplot as plt
 import matplotlib
 import string
 import random
+import io
+import pytz
 
 import xarray
 from pyproj import CRS
 import rioxarray
+from django.core.files.base import ContentFile
 
 from pages.util import config
+
+def xy_to_idx(x_coord, y_coord, xds, outproj="EPSG:4326", inproj="EPSG:4326"):
+    """ Given a x coord and y coord value will find the in index of the xds which that xy coord pix is in. Defaults to longitude lattitude values """
+    from pyproj import Proj, transform
+    import numpy as np
+
+
+    inproj = Proj(inproj)
+    outproj = Proj(outproj)
+    lat_lon = transform(inproj, outproj, y_coord, x_coord)
+    lat, lon = lat_lon
+
+    tmp_xds = xds.sel(x=lon, y=lat, method='nearest')
+    x, y = tmp_xds.x.values, tmp_xds.y.values
+    idx_x = np.where(xds.x.values == x)[0][0]
+    idx_y = np.where(xds.y.values == y)[0][0]
+
+    return (idx_x, idx_y)
 
 def mini_normalize(xds):
     """ 
@@ -39,11 +60,25 @@ def dt64_to_timestamp(dt):
         
         Returns  
         ----------
-        ret : string
+        ret : float
+            timestamp
 
         """
     ret = (dt - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
     return ret 
+
+def dt64_to_datetime(dt):
+    """ Parameters
+    ----------
+    dt : np.datetime64 object
+    
+    Returns  
+    ----------
+    ret : datetime.datetime
+        converted datetime.datetime
+    """
+    ret = datetime.datetime.utcfromtimestamp(dt64_to_timestamp(dt)).replace(tzinfo=pytz.utc)
+    return ret
 
 def closest_dates(nc_filepath, prev_time_measurements, important_bands):
     """ 
@@ -231,26 +266,102 @@ def snap_picture(xds, lon, lat, radius):
         radius in km of image
     Returns
     ----------
-    outpath : str
-        Path where the picture was saved
+    data : django.core.files.base.ContentFile
+        Content file we will be saving into the django ImageField
     """
+
     matplotlib.use('Agg')
 
     xds = xds.rio.reproject("EPSG:3857")
     buffered_point = geodesic_point_buffer(lon=lon, lat=lat, km=radius)
     clipped_xds = xds.rio.clip([buffered_point], "EPSG:4326")
-    clipped_xds.Rad.plot(cmap=plt.cm.viridis)
+    fig, ax = plt.subplots()
+    im = clipped_xds.Rad.plot(ax=ax, cmap=plt.cm.viridis, cbar_kwargs={'label': 'Alarm Level'})
 
-    letters = string.ascii_lowercase
-    result_str = ''.join(random.choice(letters) for i in range(15))
-    outpath = os.path.join(config.MEDIA_FOLDER, 'fire_pictures', result_str)
-    while os.path.exists(outpath):
-        outpath = outpath + random.choice(letters)
-    outpath += 'jpg'
-    plt.savefig(outpath)
+    # Formatting plot
+    ax.axes.get_xaxis().set_visible(False)
+    ax.axes.get_yaxis().set_visible(False)
+    ax.set_title("")
+
+    pic_IObytes = io.BytesIO()
+    plt.savefig(pic_IObytes,  format='png')
+    pic_IObytes.seek(0)
+    data = ContentFile(pic_IObytes.read(), name=' temp.jpg')
     plt.close()
+
+    return data
+
+def get_graph_points(px_idx):
+    """ 
+    Parameters
+    ----------
+    px_idx : tuple
+        tule of fire index which shows where in the diff_xds the 
+        fire is 
+
+    Returns
+    ----------
+    time_graph_pts, pred_graph_pts, diff_graph_pts, cloud_graph_pts, actual_7_graph_pts, actual_14_graph_pts : list
+        list of points of current files in actual and pred folders
+    """
+    # Getting filepaths of previous points, everyline for readability
+    pred_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'pred')
+    pred_file_lst = os.listdir(pred_folder)
+    pred_file_lst = sorted(pred_file_lst, key=key_from_filestring)
+    prev_pts = len(pred_file_lst)
+
+    diff_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'diff')
+    diff_file_lst = os.listdir(diff_folder)
+    diff_file_lst = sorted(diff_file_lst, key=key_from_filestring)
+    diff_file_lst = diff_file_lst[-prev_pts:]
+
+    cloud_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'cloud')
+    cloud_file_lst = os.listdir(cloud_folder)
+    cloud_file_lst = sorted(cloud_file_lst, key=key_from_filestring)
+    cloud_file_lst = cloud_file_lst[-prev_pts:]
     
-    return outpath
+    actual_7_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_7')
+    actual_7_file_lst = os.listdir(actual_7_folder)
+    actual_7_file_lst = sorted(actual_7_file_lst, key=key_from_filestring)
+    actual_7_file_lst = actual_7_file_lst[-prev_pts:]
+
+    actual_14_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_14')
+    actual_14_file_lst = os.listdir(actual_14_folder)
+    actual_14_file_lst = sorted(actual_14_file_lst, key=key_from_filestring)
+    actual_14_file_lst = actual_14_file_lst[-prev_pts:]
+
+    time_graph_pts, pred_graph_pts = [], []
+    for xds_path in pred_file_lst:
+        xds = xarray.open_dataset(os.path.join(pred_folder, xds_path))
+        pred_graph_pts.append(xds.Rad.values[px_idx[1], px_idx[0]])
+        time_graph_pts.append(xds.t.values)
+        xds.close()
+
+    diff_graph_pts = []
+    for xds_path in diff_file_lst:
+        xds = xarray.open_dataset(os.path.join(diff_folder, xds_path))
+        diff_graph_pts.append(xds.Rad.values[px_idx[1], px_idx[0]])
+        xds.close()
+
+    cloud_graph_pts = []
+    for xds_path in cloud_file_lst:
+        xds = xarray.open_dataset(os.path.join(cloud_folder, xds_path))
+        cloud_graph_pts.append(xds.Cloud.values[px_idx[1], px_idx[0]])
+        xds.close()
+
+    actual_7_graph_pts = []
+    for xds_path in actual_7_file_lst:
+        xds = xarray.open_dataset(os.path.join(actual_7_folder, xds_path))
+        actual_7_graph_pts.append(xds.Rad.values[px_idx[1], px_idx[0]])
+        xds.close()
+
+    actual_14_graph_pts = []
+    for xds_path in actual_14_file_lst:
+        xds = xarray.open_dataset(os.path.join(actual_14_folder, xds_path))
+        actual_14_graph_pts.append(xds.Rad.values[px_idx[1], px_idx[0]])
+        xds.close()
+
+    return time_graph_pts, pred_graph_pts, diff_graph_pts, cloud_graph_pts, actual_7_graph_pts, actual_14_graph_pts
 
 def cluster_to_FireModel(cluster, diff_xds_path):
     """ 
@@ -267,7 +378,8 @@ def cluster_to_FireModel(cluster, diff_xds_path):
     # Intial lon, lat, and timestamp is average of first cluster
     avg_lon = np.mean(cluster[:, 0])
     avg_lat = np.mean(cluster[:, 1])
-    avg_timestamp = datetime.datetime.utcfromtimestamp(np.mean([dt.timestamp() for dt in cluster[:, 2]]))
+    avg_timestamp = datetime.datetime.utcfromtimestamp(np.mean([dt.timestamp() for dt in cluster[:, 2]])).replace(tzinfo=pytz.utc)
+    print(avg_timestamp)
 
     # Anomaly list
     anom_arr_bin = obj_to_binfield(cluster.flatten())
@@ -275,9 +387,15 @@ def cluster_to_FireModel(cluster, diff_xds_path):
     # Cluster list, we wrap in a list as when more clusters are added we want to append them to the array
     cluster_lst_bin = obj_to_binfield([cluster])
 
-    # TODO Insert Picture taking here
+    # Snapping Pictures
     xds = xarray.open_dataset(diff_xds_path)
-    pic_path = snap_picture(xds, avg_lon, avg_lat, 20)
+    content_file = snap_picture(xds, avg_lon, avg_lat, 20)
+
+    # Getting index in xarrays
+    px_idx = xy_to_idx(avg_lon, avg_lat, xds)
+
+    # Getting graph points
+    time_graph_pts, pred_graph_pts, diff_graph_pts, cloud_graph_pts, actual_7_graph_pts, actual_14_graph_pts = get_graph_points(px_idx)
 
     # TODO Insert Causes here
 
@@ -290,7 +408,15 @@ def cluster_to_FireModel(cluster, diff_xds_path):
         latest_timestamp=avg_timestamp, 
         anomaly_arr=anom_arr_bin,
         cluster_lst=cluster_lst_bin,
-        image=pic_path, 
+        image=content_file, 
+        px_idx_x=px_idx[0],
+        px_idx_y=px_idx[1],
+        time_graph_pts=obj_to_binfield(time_graph_pts),
+        pred_graph_pts=obj_to_binfield(pred_graph_pts),
+        diff_graph_pts=obj_to_binfield(diff_graph_pts),
+        cloud_graph_pts=obj_to_binfield(cloud_graph_pts),
+        actual_7_graph_pts=obj_to_binfield(actual_7_graph_pts),
+        actual_14_graph_pts=obj_to_binfield(actual_14_graph_pts),
     )
 
 def update_FireModel(cluster, fire):
@@ -309,7 +435,7 @@ def update_FireModel(cluster, fire):
     # Add current anomaly list to old anomaly list
     current_anomaly_arr = binfield_to_obj(fire.anomaly_arr)
     current_anomaly_arr = np.append(current_anomaly_arr, cluster.flatten(), 0)
-    avg_timestamp = datetime.datetime.utcfromtimestamp(np.mean([dt.timestamp() for dt in cluster[:, 2]]))
+    avg_timestamp = datetime.datetime.utcfromtimestamp(np.mean([dt.timestamp() for dt in cluster[:, 2]])).replace(tzinfo=pytz.utc)
     
     # Update fire model
     fire.cluster_lst = obj_to_binfield(current_cluster_lst)

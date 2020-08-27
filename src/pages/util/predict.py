@@ -437,7 +437,7 @@ def classify(bandpath_dct):
 
     # Deleting files now that we have used one "group" of data
     # Removing oldest file in actual, prediction, diff, and cloud array if we have at least 12 files (only band 7)
-    max_files = 12
+    max_files = 40
     folder_lst = [
         os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_7'), 
         os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_14'), 

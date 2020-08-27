@@ -1,11 +1,15 @@
+import requests
+import json
+import numpy as np
+
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect
 from django.views.generic import TemplateView, ListView
 from django.contrib import messages
+
 from .forms import EmailForm
 from .models import FireModel
-import requests
-import json
+from .util.misc_functions import binfield_to_obj, dt64_to_datetime
 
 # Create your views here.
 class HomeView(TemplateView):
@@ -49,7 +53,25 @@ def fire_page_view(request):
 
 def fire_detail_view(request, pk):
     fire = FireModel.objects.get(id=pk)
-    return render(request, "firedetail.html", {'fire':fire})
+    time_graph_pts = binfield_to_obj(fire.time_graph_pts)
+    pred_graph_pts = binfield_to_obj(fire.pred_graph_pts)
+    diff_graph_pts = binfield_to_obj(fire.diff_graph_pts)
+    cloud_graph_pts = binfield_to_obj(fire.cloud_graph_pts)
+    actual_7_graph_pts = binfield_to_obj(fire.actual_7_graph_pts)
+    actual_14_graph_pts = binfield_to_obj(fire.actual_14_graph_pts)
+    print(type(fire.timestamp), type(time_graph_pts[0]))
+    fire_start_idx = time_graph_pts.index(min(time_graph_pts, key=lambda x: np.abs(fire.timestamp - dt64_to_datetime(x))))
+    content = {
+        'fire':fire,
+        'time_pts':time_graph_pts,
+        'pred_pts':pred_graph_pts,
+        'diff_pts':diff_graph_pts,
+        'cloud_pts':cloud_graph_pts,
+        'actual_7_pts':actual_7_graph_pts,
+        'actual_14_pts':actual_14_graph_pts,
+        'fire_start_idx':fire_start_idx,
+        }
+    return render(request, "firedetail.html", content)
 
 def how_it_works_view(request):
     context = {}
