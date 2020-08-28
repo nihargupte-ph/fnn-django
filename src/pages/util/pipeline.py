@@ -167,10 +167,6 @@ def callback(message):
     ----------
 
     """
-    
-    # NOTE TEMP
-    with open("/home/n/Documents/Research/fnn-django/src/media/misc/classified_lst.pkl", "wb") as f:
-        pickle.dump([], f)
 
     # Getting relavent bands 
     # band_path = filter_band(message)
@@ -198,11 +194,11 @@ def callback(message):
         message.nack()
         return 
     
-    bandpath_dct = get_associate_ABI(path)
-    # bandpath_dct = {
-    #     'diff': '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff/OR_ABI-L1b-RadC-M6C07_G16_s20202400056172_e20202400058557_c20202400058597.nc',
-    #     'cloud': '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud/OR_ABI-L1b-RadC-M6C14_G16_s20202400056172_e20202400058545_c20202400059079.nc'
-    # }
+    # bandpath_dct = get_associate_ABI(path)
+    bandpath_dct = {
+        'diff': '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff/OR_ABI-L1b-RadC-M6C07_G16_s20202400056172_e20202400058557_c20202400058597.nc',
+        'cloud': '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud/OR_ABI-L1b-RadC-M6C14_G16_s20202400056172_e20202400058545_c20202400059079.nc'
+    }
     if bandpath_dct == None:
         return
     else:

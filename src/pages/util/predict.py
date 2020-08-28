@@ -396,6 +396,10 @@ def classify(bandpath_dct):
     time_filter = anomaly_time - datetime.timedelta(hours=1)
     queried_fires = FireModel.objects.filter(latest_timestamp__gt=time_filter)
 
+    # Updating the plots of fires detected in the last 1 hour 
+    for fire in queried_fires:
+        misc_functions.update_FireModel_plots(bandpath_dct['diff'], bandpath_dct['cloud'], fire)
+
     queried_center_lst = []
     for fire in queried_fires:
         query_cluster_lst = misc_functions.binfield_to_obj(fire.cluster_lst)

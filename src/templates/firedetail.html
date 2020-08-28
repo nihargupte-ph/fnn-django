@@ -25,13 +25,14 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.css" integrity="sha256-aa0xaJgmK/X74WM224KMQeNQC2xYKwlAt08oZqjeF0E=" crossorigin="anonymous" />
         <!-- jQuery -->
         <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-        <canvas id="myChart" width="400" height="300"></canvas>
+        <canvas id="chart1" width="400" height="300"></canvas>
+        <canvas id="chart2" width="200" height="100"></canvas>
     </div>
 </section>
 
 
 <script>
-var ctx = document.getElementById('myChart').getContext('2d');
+var ctx = document.getElementById('chart1').getContext('2d');
 
 const verticalLinePlugin = {
         getLinePosition: function (chart, pointIndex) {
@@ -54,7 +55,8 @@ const verticalLinePlugin = {
             // write label
             context.fillStyle = "#ff0000";
             context.textAlign = 'center';
-            context.fillText('FIRE DETECTED', lineLeftOffset - .7*scale.left, (scale.bottom - scale.top) / 2 + .25*scale.top);
+            context.font = '15px Helvetica';
+            context.fillText('FIRE DETECTED', lineLeftOffset - scale.right, (scale.bottom - scale.top) / 2 + .25*scale.top);    
         },
 
         afterDatasetsDraw: function (chart, easing) {
@@ -65,47 +67,55 @@ const verticalLinePlugin = {
     };
 
 Chart.plugins.register(verticalLinePlugin);
-
+Chart.defaults.global.defaultFontColor='rgba(255, 255, 255, 1)'
 var config = {
     type: 'line',
     data: {
         labels: [{% for item in time_pts %}'{{item}}',{% endfor %}],
-        datasets: [{
-            label: 'Predicted Infared',
-            data: [{% for item in pred_pts %}{{item}},{% endfor %}],
-            backgroundColor: [
-                'rgba(0, 102, 255, 0.2)',
-            ],
-            borderColor: [
-                'rgba(0, 102, 255, 1)',
-            ],
-            borderWidth: 1
-        }, 
-        {
-            label: 'Actual Infared',
-            data: [{% for item in actual_7_pts %}{{item}},{% endfor %}],
-            backgroundColor: [
-                'rgba(255, 0, 102, 0.2)',
-            ],
-            borderColor: [
-                'rgba(255, 0, 102, 1)',
-            ],
-            borderWidth: 1
-        },
+        datasets: [
         {
             label: 'Alarm Level',
             data: [{% for item in diff_pts %}{{item}},{% endfor %}],
-            borderColor: [
-                'rgba(255, 255, 255, 1)',
+            yAxisID: 'B',
+            backgroundColor: [
+                'rgba(0, 0, 0, 0)',
             ],
-            borderWidth: 1
-        }]
+            borderColor: [
+                'rgba(253, 155, 160, 1)',
+            ],
+            pointBorderColor: [{% for item in cloud_colors %} '{{item}}',{% endfor %}],
+            borderWidth: 4,
+        },
+        {
+            label: 'Predicted Near Infared',
+            data: [{% for item in pred_pts %}{{item}},{% endfor %}],
+            backgroundColor: [
+                'rgba(0, 253, 220, 0.3)',
+            ],
+            borderColor: [
+                'rgba(0, 253, 220, 1)',
+            ],
+            borderWidth: 3
+        }, 
+        {
+            label: 'Actual Near Infared',
+            data: [{% for item in actual_7_pts %}{{item}},{% endfor %}],
+            backgroundColor: [
+                'rgba(220, 0, 115, 0.3)',
+            ],
+            borderColor: [
+                'rgba(255, 0, 170, 1)',
+            ],
+            borderWidth: 3
+        },
+]
     },
     options: {
         responsive: true,
         title: {
             display: true,
-            text: 'Chart.js Line Chart - Stacked Area'
+            fontSize: 30,
+            text: 'What the Artificial Intelligence Sees'
         },
         tooltips: {
             mode: 'index',
@@ -117,21 +127,37 @@ var config = {
             xAxes: [{
                 scaleLabel: {
                     display: true,
-                    labelString: 'Month'
                 }
             }],
             yAxes: [{
-                stacked: true,
+                stacked: false,
+                type: 'linear',
+                position: 'left',
                 scaleLabel: {
                     display: true,
-                    labelString: 'Value'
-                }
-            }]
+                    labelString: 'Near Infared Radiance',
+                    fontColor: 'rgba(71, 103, 120, 1)',
+                    fontSize: 20,
+                },
+            },
+            {
+                stacked: false,
+                type: 'linear',
+                position: 'right',
+                id: 'B',
+                scaleLabel: {
+                    display: true,
+                    labelString: 'Alarm Level',
+                    fontColor: 'rgba(253, 155, 160, 1)',
+                    fontSize: 20, 
+                },
+            },]
         }
     },
     lineAtIndex: [{{ fire_start_idx }}],
 }
-var myChart = new Chart(ctx, config);
+var chart1 = new Chart(ctx, config);
 </script>
+
 
 {% endblock content %}

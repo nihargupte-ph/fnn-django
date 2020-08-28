@@ -281,13 +281,14 @@ def snap_picture(xds, lon, lat, radius):
     # Formatting plot
     ax.axes.get_xaxis().set_visible(False)
     ax.axes.get_yaxis().set_visible(False)
-    ax.set_title("")
+    ax.set_title("Zoomed in fire pictures")
 
     pic_IObytes = io.BytesIO()
     plt.savefig(pic_IObytes,  format='png')
     pic_IObytes.seek(0)
     data = ContentFile(pic_IObytes.read(), name=' temp.jpg')
     plt.close()
+    xds.close()
 
     return data
 
@@ -375,11 +376,16 @@ def cluster_to_FireModel(cluster, diff_xds_path):
     """
     from pages.models import FireModel
 
-    # Intial lon, lat, and timestamp is average of first cluster
-    avg_lon = np.mean(cluster[:, 0])
-    avg_lat = np.mean(cluster[:, 1])
+    xds = xarray.open_dataset(diff_xds_path)
+    
+    # Initial lon and lat is the place with the highest radiance value
+    px_idx_lst = [xy_to_idx(lon, lat, xds) for lon, lat in zip(cluster[:, 0], cluster[:, 1])]
+    vals = [xds.Rad.values[px_idx[1], px_idx[0]] for px_idx in px_idx_lst]
+    ll_idx = vals.index(max(vals))
+    lon = cluster[ll_idx, 0]
+    lat = cluster[ll_idx, 1]
+    # Intial timestamp is average of first cluster's timestamp
     avg_timestamp = datetime.datetime.utcfromtimestamp(np.mean([dt.timestamp() for dt in cluster[:, 2]])).replace(tzinfo=pytz.utc)
-    print(avg_timestamp)
 
     # Anomaly list
     anom_arr_bin = obj_to_binfield(cluster.flatten())
@@ -388,11 +394,10 @@ def cluster_to_FireModel(cluster, diff_xds_path):
     cluster_lst_bin = obj_to_binfield([cluster])
 
     # Snapping Pictures
-    xds = xarray.open_dataset(diff_xds_path)
-    content_file = snap_picture(xds, avg_lon, avg_lat, 20)
+    content_file = snap_picture(xds, lon, lat, 20)
 
     # Getting index in xarrays
-    px_idx = xy_to_idx(avg_lon, avg_lat, xds)
+    px_idx = px_idx_lst[ll_idx]
 
     # Getting graph points
     time_graph_pts, pred_graph_pts, diff_graph_pts, cloud_graph_pts, actual_7_graph_pts, actual_14_graph_pts = get_graph_points(px_idx)
@@ -402,8 +407,8 @@ def cluster_to_FireModel(cluster, diff_xds_path):
     # TODO Insert names, short_description, long_description, probability here
     
     FireModel.objects.create(
-        longitude=avg_lon,
-        latitude=avg_lat,
+        longitude=lon,
+        latitude=lat,
         timestamp=avg_timestamp,
         latest_timestamp=avg_timestamp, 
         anomaly_arr=anom_arr_bin,
@@ -418,6 +423,8 @@ def cluster_to_FireModel(cluster, diff_xds_path):
         actual_7_graph_pts=obj_to_binfield(actual_7_graph_pts),
         actual_14_graph_pts=obj_to_binfield(actual_14_graph_pts),
     )
+
+    xds.close()
 
 def update_FireModel(cluster, fire):
     """ 
@@ -443,6 +450,72 @@ def update_FireModel(cluster, fire):
     fire.latest_timestamp = avg_timestamp
     
     fire.save()
+
+def update_FireModel_plots(diff_xds_path, cloud_xds_path, fire):
+    """ 
+    Parameters
+    ----------
+    diff_xds_path : str
+        File that are using to update the plots, note that we will have to use multiple files, but the basename
+        is the same 
+    cloud_xds_path : str
+        File that are using to update the plots, note that we will have to use multiple files, but the basename
+        is the same 
+    fire : pages.models.FireModel
+        firemodel we are updating
+    """
+    diff_basname = os.path.basename(diff_xds_path)
+    cloud_basename = os.path.basename(cloud_xds_path)
+
+    # Getting old points
+    time_graph_pts       = binfield_to_obj(fire.time_graph_pts)
+    pred_graph_pts       = binfield_to_obj(fire.pred_graph_pts)
+    diff_graph_pts       = binfield_to_obj(fire.diff_graph_pts)
+    cloud_graph_pts      = binfield_to_obj(fire.cloud_graph_pts)
+    actual_7_graph_pts   = binfield_to_obj(fire.actual_7_graph_pts)
+    actual_14_graph_pts  = binfield_to_obj(fire.actual_14_graph_pts)
+    px_idx_x             = fire.px_idx_x
+    px_idx_y             = fire.px_idx_y
+
+    # Opening new xds
+    actual_7_xds = xarray.open_dataset(os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_7', diff_basname))
+    actual_14_xds = xarray.open_dataset(os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_14', cloud_basename))
+    pred_xds = xarray.open_dataset(os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'pred', diff_basname))
+    diff_xds = xarray.open_dataset(os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'diff', diff_basname))
+    cloud_xds = xarray.open_dataset(os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'cloud', cloud_basename))
+
+    # Getting new points
+    new_time_pt = diff_xds.t.values
+    new_pred_pt = pred_xds.Rad.values[px_idx_y, px_idx_x]
+    new_diff_pt = diff_xds.Rad.values[px_idx_y, px_idx_x]
+    new_cloud_pt = cloud_xds.Cloud.values[px_idx_y, px_idx_x]
+    new_actual_7_pt = actual_7_xds.Rad.values[px_idx_y, px_idx_x]
+    new_actual_14_pt = actual_14_xds.Rad.values[px_idx_y, px_idx_x]
+
+    # Combining
+    time_graph_pts.append(new_time_pt)
+    pred_graph_pts.append(new_pred_pt)
+    diff_graph_pts.append(new_diff_pt)
+    cloud_graph_pts.append(new_cloud_pt)
+    actual_7_graph_pts.append(new_actual_7_pt)
+    actual_14_graph_pts.append(new_actual_14_pt)
+
+    # Updating fire model 
+    fire.time_graph_pts = obj_to_binfield(time_graph_pts)
+    fire.pred_graph_pts = obj_to_binfield(pred_graph_pts)
+    fire.diff_graph_pts = obj_to_binfield(diff_graph_pts)
+    fire.cloud_graph_pts = obj_to_binfield(cloud_graph_pts)
+    fire.actual_7_graph_pts = obj_to_binfield(actual_7_graph_pts)
+    fire.actual_14_graph_pts = obj_to_binfield(actual_14_graph_pts)
+
+    fire.save()
+
+    actual_7_xds.close()
+    actual_14_xds.close()
+    pred_xds.close()
+    diff_xds.close()
+    cloud_xds.close()
+
 
 def update_picture():
     # TODO

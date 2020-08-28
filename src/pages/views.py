@@ -59,16 +59,25 @@ def fire_detail_view(request, pk):
     cloud_graph_pts = binfield_to_obj(fire.cloud_graph_pts)
     actual_7_graph_pts = binfield_to_obj(fire.actual_7_graph_pts)
     actual_14_graph_pts = binfield_to_obj(fire.actual_14_graph_pts)
-    print(type(fire.timestamp), type(time_graph_pts[0]))
+    
     fire_start_idx = time_graph_pts.index(min(time_graph_pts, key=lambda x: np.abs(fire.timestamp - dt64_to_datetime(x))))
+    # Formatting time to be pretty displayed 
+    time_graph_pts = [dt64_to_datetime(d).strftime('%b %d %H:%M') for d in time_graph_pts]
+    # Creating colors based on cloud or non cloud 
+    cloud_colors = []
+    for pt in cloud_graph_pts:
+        if pt:
+            cloud_colors.append(f"rgba(66, 135, 245, 1)")
+        else:
+            cloud_colors.append(f"rgba(220, 227, 223, 1)")
+    print(cloud_colors)
     content = {
         'fire':fire,
         'time_pts':time_graph_pts,
         'pred_pts':pred_graph_pts,
         'diff_pts':diff_graph_pts,
-        'cloud_pts':cloud_graph_pts,
+        'cloud_colors': cloud_colors,
         'actual_7_pts':actual_7_graph_pts,
-        'actual_14_pts':actual_14_graph_pts,
         'fire_start_idx':fire_start_idx,
         }
     return render(request, "firedetail.html", content)
