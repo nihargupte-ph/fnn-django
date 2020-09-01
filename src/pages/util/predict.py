@@ -9,7 +9,6 @@ import pickle
 import geopy.distance
 import geopandas as gpd
 from skimage.util.shape import view_as_windows
-from sklearn.neighbors import BallTree
 from pyproj import CRS
 import rioxarray
 from sklearn.cluster import DBSCAN
@@ -103,6 +102,7 @@ def normalize_xds(xds, proj="EPSG:4326"):
         proj_xds = xds.rio.reproject(proj)
         return proj_xds
 
+    print('got here')
     i = 0
     while i < 5: 
         try: 

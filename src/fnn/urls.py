@@ -18,7 +18,7 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 
-from pages.views import HomeView, how_it_works_view, fire_detail_view, index, FirePageView
+from pages.views import HomeView, how_it_works_view, fire_detail_view, EmailUnsubscribeView, FirePageView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -26,6 +26,6 @@ urlpatterns = [
     path('howitworks/', how_it_works_view),
     path('firepage/', FirePageView.as_view(), name='firepage'),
     path('firedetail/<int:pk>/', fire_detail_view),
-    path('index', index),
+    path('emailunsub/', EmailUnsubscribeView.as_view(), name='emailunsub'),
 ] 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

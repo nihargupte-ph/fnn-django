@@ -18,9 +18,10 @@ class Command(BaseCommand):
             Longitude: {options['lon']}\n\
             Latitude:  {options['lat']}\n\
             Timestamp: {options['timestamp']}\n\
+            Unsubscribe: http://127.0.0.1:8000/emailunsub/\n\
             """
         message = EmailMessage(
-            subject='New fire detectied',
+            subject='New fire detected',
             body=msg, 
             from_email='fireneuralnetwork@gmail.com',
             bcc=email_lst

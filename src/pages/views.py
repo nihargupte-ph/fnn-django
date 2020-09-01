@@ -7,8 +7,8 @@ from django.shortcuts import render, redirect
 from django.views.generic import TemplateView, ListView
 from django.contrib import messages
 
-from .forms import EmailForm
-from .models import FireModel
+from .forms import EmailForm, UnsubEmailForm
+from .models import FireModel, EmailModel
 from .util.misc_functions import binfield_to_obj, dt64_to_datetime
 
 # Create your views here.
@@ -44,8 +44,7 @@ class HomeView(TemplateView):
             return render(request, self.template_name, {'form':blank_form, 'user_email':user_email})
         else:
             messages.success(request, f"You have already signed up! You will recieve emails at {request.POST['email']} from fireneuralnetwork@gmail.com. Thanks for signing up! ")
-            
-        return render(request, self.template_name, {'form':blank_form, 'invalid':True})
+            return render(request, self.template_name, {'form':blank_form, 'invalid':True})
 
 
 class FirePageView(ListView):
@@ -53,6 +52,44 @@ class FirePageView(ListView):
     template_name = 'firepage.html'
     context_object_name = 'fire_list'
     ordering = ['-timestamp']
+    paginate_by = 3
+
+class EmailUnsubscribeView(TemplateView):
+    template_name = "emailunsub.html"
+
+    def get(self, request):
+        form = UnsubEmailForm()
+        return render(request, self.template_name, {'form':form})
+
+    def post(self, request):
+        # Getting token 
+        captcha_token = request.POST.get('g-recaptcha-response')
+        cap_url = "https://www.google.com/recaptcha/api/siteverify"
+        cap_secret = "6LeOJ7oZAAAAAOBUuZo2wiskY0Ut-sxG83Wa4PUJ"
+        cap_data = {'secret':cap_secret, 'response':captcha_token}
+        # Sending request to google API to verify tokens
+        cap_server_response = requests.post(url=cap_url, data=cap_data)
+        cap_json = json.loads(cap_server_response.text)
+        if cap_json['success'] == False:
+            messages.error(request, "Invalid Captcha Try Again")
+            return_success = False
+            return HttpResponseRedirect("/emailunsub")
+
+        form = UnsubEmailForm(request.POST)
+        blank_form = UnsubEmailForm()
+        if form.is_valid():
+            user_email = form.cleaned_data['email']
+            try:
+                messages.success(request, f"You will no longer recieve emails from fireneuralnetwork@gmail.com.")
+                email_to_delete = EmailModel.objects.get(email=user_email)
+                email_to_delete.delete()
+                return render(request, self.template_name, {'form':blank_form, 'user_email':user_email})
+            except:
+                messages.success(request, "Invalid email")
+                return render(request, self.template_name, {'form':blank_form, 'invalid':True})
+        else:
+            messages.success(request, "Invalid email")
+            return render(request, self.template_name, {'form':blank_form, 'invalid':True})
 
 def fire_detail_view(request, pk):
     fire = FireModel.objects.get(id=pk)
@@ -96,6 +133,3 @@ def fire_detail_view(request, pk):
 def how_it_works_view(request):
     context = {}
     return render(request, "howitworks.html", context)
-
-def index(request):
-    return HttpResponse('Done!')

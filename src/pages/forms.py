@@ -16,3 +16,17 @@ class EmailForm(forms.ModelForm):
         labels = {
             'email':'',
         }
+
+class UnsubEmailForm(forms.Form):
+    email = forms.EmailField(
+        label='',
+        widget=forms.TextInput(
+            attrs={
+            'class':"form-control flex-fill mr-0 mr-sm-2 mb-3 mb-sm-0",
+            'id':"inputEmailUnsub",
+            'type':"email",
+            'name':"unsub-email",
+            'placeholder':"Enter email address..."
+            }
+        ),
+    )
