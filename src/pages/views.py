@@ -47,9 +47,12 @@ class HomeView(TemplateView):
             
         return render(request, self.template_name, {'form':blank_form, 'invalid':True})
 
-def fire_page_view(request):
-    context = {'fire_list':FireModel.objects.all()}
-    return render(request, "firepage.html", context)
+
+class FirePageView(ListView):
+    model = FireModel
+    template_name = 'firepage.html'
+    context_object_name = 'fire_list'
+    ordering = ['-timestamp']
 
 def fire_detail_view(request, pk):
     fire = FireModel.objects.get(id=pk)
@@ -60,9 +63,17 @@ def fire_detail_view(request, pk):
     actual_7_graph_pts = binfield_to_obj(fire.actual_7_graph_pts)
     actual_14_graph_pts = binfield_to_obj(fire.actual_14_graph_pts)
     
-    fire_start_idx = time_graph_pts.index(min(time_graph_pts, key=lambda x: np.abs(fire.timestamp - dt64_to_datetime(x))))
+    fire_start_idx = time_graph_pts.index(min(time_graph_pts, key=lambda x: np.abs(fire.timestamp - x)))
+    print(time_graph_pts)
+    print(fire.timestamp, time_graph_pts[fire_start_idx])
+    print(type(fire.timestamp), type(time_graph_pts[fire_start_idx]))
     # Formatting time to be pretty displayed 
-    time_graph_pts = [dt64_to_datetime(d).strftime('%b %d %H:%M') for d in time_graph_pts]
+    time_graph_pts = [d.strftime('%b %d %H:%M') for d in time_graph_pts]
+
+    # Creating changing bound based on cloud and non-cloud
+    cloud_bound = [.17 if pt else .55 for pt in cloud_graph_pts]
+
+
     # Creating colors based on cloud or non cloud 
     cloud_colors = []
     for pt in cloud_graph_pts:
@@ -70,15 +81,15 @@ def fire_detail_view(request, pk):
             cloud_colors.append(f"rgba(66, 135, 245, 1)")
         else:
             cloud_colors.append(f"rgba(220, 227, 223, 1)")
-    print(cloud_colors)
     content = {
         'fire':fire,
         'time_pts':time_graph_pts,
         'pred_pts':pred_graph_pts,
         'diff_pts':diff_graph_pts,
         'cloud_colors': cloud_colors,
-        'actual_7_pts':actual_7_graph_pts,
+        'cloud_bound': cloud_bound, 
         'fire_start_idx':fire_start_idx,
+        'actual_7_pts': actual_7_graph_pts,
         }
     return render(request, "firedetail.html", content)
 

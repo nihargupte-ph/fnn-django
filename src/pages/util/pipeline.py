@@ -150,6 +150,7 @@ def clear_folders():
     os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'diff'), 
     os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'pred'), 
     os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'cloud'),
+    os.path.join(config.MEDIA_FOLDER, 'tmp')
     ]
 
     for folder in folder_lst:
@@ -169,8 +170,8 @@ def callback(message):
     """
 
     # Getting relavent bands 
-    # band_path = filter_band(message)
-    band_path = (7, 'ABI-L1b-RadC/2020/240/00/OR_ABI-L1b-RadC-M6C07_G16_s20202400056172_e20202400058557_c20202400058597.nc')
+    band_path = filter_band(message)
+    # band_path = (7, 'ABI-L1b-RadC/2020/240/00/OR_ABI-L1b-RadC-M6C07_G16_s20202400056172_e20202400058557_c20202400058597.nc')
 
     if band_path[0] == None:
         message.ack()
@@ -180,12 +181,12 @@ def callback(message):
     elif band_path[0] == 7:
         logging.info("Band 7 message recieved")
         path = band_7_process(band_path[1])
-        # message.ack()
+        message.ack()
 
     elif band_path[0] == 14:
         logging.info("Band 14 message recieved")
         path = band_14_process(band_path[1])
-        # message.ack()
+        message.ack()
 
     else:
         raise Exception("Unkonwn message recieved")
@@ -194,11 +195,8 @@ def callback(message):
         message.nack()
         return 
     
-    # bandpath_dct = get_associate_ABI(path)
-    bandpath_dct = {
-        'diff': '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff/OR_ABI-L1b-RadC-M6C07_G16_s20202400056172_e20202400058557_c20202400058597.nc',
-        'cloud': '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud/OR_ABI-L1b-RadC-M6C14_G16_s20202400056172_e20202400058545_c20202400059079.nc'
-    }
+    bandpath_dct = get_associate_ABI(path)
+    
     if bandpath_dct == None:
         return
     else:
@@ -208,31 +206,42 @@ def callback(message):
 def pipeline():
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = config.API_KEY
     logging.basicConfig(level=logging.INFO)
+    
+    # diff_folder, cloud_folder = '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff', '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud'
+    # diff_lst, cloud_lst = os.listdir(diff_folder), os.listdir(cloud_folder)
+    # for diff_file, cloud_file in zip(diff_lst[:4], cloud_lst[:4]):
+    #     import xarray
+    #     xds = xarray.open_dataset(os.path.join(diff_folder, diff_file))
+    #     print(f'tstart  {xds.t.values}')
+    #     bandpath_dct = {
+    #         'diff': os.path.join(diff_folder, diff_file),
+    #         'cloud': os.path.join(cloud_folder, cloud_file)
+    #     }
+    #     callback(bandpath_dct)
 
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-    callback('hi')
 
-    # project_id = "fire-neural-network"
-    # subscription_id = "goes16-ABI-data-sub-filtered"
+    project_id = "fire-neural-network"
+    subscription_id = "goes16-ABI-data-sub-filtered"
 
-    # subscriber = pubsub_v1.SubscriberClient()
-    # subscription_path = subscriber.subscription_path(project_id, subscription_id)
-    # streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
-    # try: 
-    #     clear_folders()
-    #     logging.info("Successfully cleared folders")
-    # except:
-    #     logging.critical("Unable to clear folders")
-    # logging.info("Listening for messages on {}..\n".format(subscription_path))
+    subscriber = pubsub_v1.SubscriberClient()
+    subscription_path = subscriber.subscription_path(project_id, subscription_id)
+    streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
+    try: 
+        clear_folders()
+        logging.info("Successfully cleared folders")
+    except:
+        logging.critical("Unable to clear folders")
+    logging.info("Listening for messages on {}..\n".format(subscription_path))
 
-    # # Wrap subscriber in a 'with' block to automatically call close() when done.
-    # with subscriber:
-    #     try:
-    #         # When `timeout` is not set, result() will block indefinitely,
-    #         # unless an exception is encountered first.
-    #         streaming_pull_future.result()
-    #     except TimeoutError:
-    #         streaming_pull_future.cancel()
+    # Wrap subscriber in a 'with' block to automatically call close() when done.
+    with subscriber:
+        try:
+            # When `timeout` is not set, result() will block indefinitely,
+            # unless an exception is encountered first.
+            streaming_pull_future.result()
+        except TimeoutError:
+            streaming_pull_future.cancel()
 
 # gcloud beta pubsub subscriptions create goes16-ABI-data-sub-filtered --project fire-neural-network --topic projects/gcp-public-data---goes-16/topics/gcp-public-data-goes-16 --message-filter='hasPrefix(attributes.objectId,"ABI-L1b-RadC/")' --enable-message-ordering
 # gcloud pubsub subscriptions seek projects/fire-neural-network/subscriptions/goes16-ABI-data-sub-filtered --time=$(date +%Y-%m-%dT%H:%M:%S) 

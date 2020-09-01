@@ -9,13 +9,14 @@ import pickle
 import geopy.distance
 import geopandas as gpd
 from skimage.util.shape import view_as_windows
+from sklearn.neighbors import BallTree
 from pyproj import CRS
 import rioxarray
 from sklearn.cluster import DBSCAN
-from sklearn.neighbors import BallTree
 import xarray
 from django.core.management import call_command
 from django.core import management
+from func_timeout import func_timeout, FunctionTimedOut
 
 from pages.util import config 
 from pages.util import misc_functions
@@ -91,13 +92,30 @@ def normalize_xds(xds, proj="EPSG:4326"):
         sat_height = xds.goes_imager_projection.attrs["perspective_point_height"]
     except AttributeError:
         return xds
-    # xds.assign_coords({"x": xds.x.values * sat_height, "y": xds.y.values * sat_height})
     xds.x.values *= sat_height
     xds.y.values *= sat_height
     cc = CRS.from_cf(xds.goes_imager_projection.attrs)
     xds.rio.write_crs(cc.to_string(), inplace=True)
     xds = xds[["Rad", "DQF"]]
-    proj_xds = xds.rio.reproject(proj)
+    
+    # Sometimes this function times out
+    def wrapper(xds, proj):
+        proj_xds = xds.rio.reproject(proj)
+        return proj_xds
+
+    i = 0
+    while i < 5: 
+        try: 
+            proj_xds = func_timeout(10, wrapper, args=(xds, proj))
+            break
+        except FunctionTimedOut:
+            logging.warning(f"Reprojection timed out trying again ({i})")
+            proj_xds = func_timeout(10, wrapper, args=(xds, proj))
+            i += 1
+    
+    if i == 5:
+        logging.critical("Unable to reproject because of TimeOut")
+        raise TimeoutError
 
     return proj_xds
 
@@ -331,8 +349,7 @@ def classify(bandpath_dct):
         diff_xds.close()
         cloud_xds.close()
 
-        dt = datetime.datetime.utcfromtimestamp(misc_functions.dt64_to_timestamp(anomaly_time))
-        ret = list(zip(anomaly_lons, anomaly_lats, [dt for _ in anomaly_lats]))
+        ret = list(zip(anomaly_lons, anomaly_lats, [anomaly_time for _ in anomaly_lats]))
         return ret
 
 
@@ -372,62 +389,100 @@ def classify(bandpath_dct):
 
 
     logging.info('Entered classification')
-    try:
-        anomaly_lst = get_anomalies(bandpath_dct)
-        logging.info(f"Got anomalies. {len(anomaly_lst)} anomalies detected")
-    except:
-        logging.critical("Unable to get anomalies")
-    anomaly_time = anomaly_lst[0][-1]
+    # try:
+    anomaly_lst = get_anomalies(bandpath_dct)
+    logging.info(f"Got anomalies. {len(anomaly_lst)} anomalies detected")
+    # except:
+    #     logging.critical("Unable to get anomalies")
 
-    space_anomaly_lst = [(i[0], i[1]) for i in anomaly_lst]
-    try: 
-        cluster_lst = cluster_anomalies(space_anomaly_lst)
-        logging.info(f"Clustered anomalies. {len(cluster_lst)} clusters formed")
-    except:
-        logging.critical("Unable to cluster anomalies")
-    cluster_lst = [np.hstack((cluster, np.full(shape=(cluster.shape[0], 1), fill_value=anomaly_time))) for cluster in cluster_lst]
+    if len(anomaly_lst) == 0:
+        fire_found = False
+    else:
+        fire_found = True
 
-    found_center_lst = []
-    for cluster in cluster_lst:
-        found_lon = np.mean([i[0] for i in cluster])
-        found_lat = np.mean([i[1] for i in cluster])
-        found_center_lst.append((np.deg2rad(found_lat), np.deg2rad(found_lon)))
-    
-    time_filter = anomaly_time - datetime.timedelta(hours=1)
+    if fire_found:
+        anomaly_time = misc_functions.dt64_to_datetime(anomaly_lst[0][-1])
+
+        space_anomaly_lst = [(i[0], i[1]) for i in anomaly_lst]
+        try: 
+            cluster_lst = cluster_anomalies(space_anomaly_lst)
+            logging.info(f"Clustered anomalies. {len(cluster_lst)} clusters formed")
+        except:
+            logging.critical("Unable to cluster anomalies")
+        cluster_lst = [np.hstack((cluster, np.full(shape=(cluster.shape[0], 1), fill_value=anomaly_time))) for cluster in cluster_lst]
+
+        xds = xarray.open_dataset(bandpath_dct['diff'])
+        found_center_lst = []
+        for cluster in cluster_lst:
+            px_idx_lst = [misc_functions.xy_to_idx(lon, lat, xds) for lon, lat in zip(cluster[:, 0], cluster[:, 1])]
+            vals = [xds.Rad.values[px_idx[1], px_idx[0]] for px_idx in px_idx_lst]
+            ll_idx = vals.index(max(vals))
+            found_lon = cluster[ll_idx, 0]
+            found_lat = cluster[ll_idx, 1]
+            # found_lon = np.mean([i[0] for i in cluster])
+            # found_lat = np.mean([i[1] for i in cluster])
+            found_center_lst.append((found_lat, found_lon))
+        xds.close()
+    else:
+        xds = xarray.open_dataset(bandpath_dct['diff'])
+        anomaly_time = misc_functions.dt64_to_datetime(xds.t.values)
+        xds.close()
+        
+    time_filter = anomaly_time - datetime.timedelta(days=1)
     queried_fires = FireModel.objects.filter(latest_timestamp__gt=time_filter)
 
-    # Updating the plots of fires detected in the last 1 hour 
+    # Updating the plots of fires detected in the last time_filter 
     for fire in queried_fires:
         misc_functions.update_FireModel_plots(bandpath_dct['diff'], bandpath_dct['cloud'], fire)
+        # print(fire.id, fire.latest_timestamp, anomaly_time)
 
-    queried_center_lst = []
-    for fire in queried_fires:
-        query_cluster_lst = misc_functions.binfield_to_obj(fire.cluster_lst)
-        recent_cluster = query_cluster_lst[-1] # NOTE maybe should be changed to previous 2 clusters but left as 1 for now
-        recent_lon = np.mean([i[0] for i in recent_cluster])
-        recent_lat = np.mean([i[1] for i in recent_cluster])
-        queried_center_lst.append((np.deg2rad(recent_lat), np.deg2rad(recent_lon)))
+    if fire_found:
+        queried_center_lst = []
+        for fire in queried_fires:
+            query_cluster_lst = misc_functions.binfield_to_obj(fire.cluster_lst)
+            recent_cluster = query_cluster_lst[-1] # NOTE maybe should be changed to previous 2 clusters but left as 1 for now
+            recent_lon = np.mean([i[0] for i in recent_cluster])
+            recent_lat = np.mean([i[1] for i in recent_cluster])
+            queried_center_lst.append((recent_lat, recent_lon))
 
-    # Use ball tree to link the found cluster centers w/ the recent cluster centers
-    if not len(queried_center_lst) == 0:
-        tree = BallTree(np.array(queried_center_lst), leaf_size=2, metric='haversine')
-        dist, index = tree.query(np.array(found_center_lst), k=1)
-        logging.info('Constructed BallTree for linking old fires')
+        # Use ball tree to link the found cluster centers w/ the recent cluster centers
+        if not len(queried_center_lst) == 0:
 
-        for i, (ind,d) in enumerate(zip(index, dist)):
-            d *= 6371 # convert to km
-            cluster = cluster_lst[i]
-            if d < 10:
-                fire = queried_fires[int(ind)]
-                misc_functions.update_FireModel(cluster, fire)
-                logging.info("Updated fire")
-            else:
-                misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'])
-                logging.info("Created new fire")
-    else:
-        for cluster in cluster_lst:
-            misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'])
-            logging.info("Created new fire")
+            # Linking fires with for loop 
+            for found_idx, found_center in enumerate(found_center_lst):
+                dist_lst = []
+                for queried_center in queried_center_lst:
+                    dist_lst.append(geopy.distance.distance(found_center, queried_center).km)
+                min_dist = min(dist_lst)
+                min_idx = dist_lst.index(min_dist)
+                if min_dist <= 15: # km
+                    fire = misc_functions.update_FireModel(cluster_lst[found_idx], queried_fires[min_idx])
+                    logging.info(f"Updated fire with id {fire.id}")
+                else:
+                    fire = misc_functions.cluster_to_FireModel(cluster_lst[found_idx], bandpath_dct['diff'])
+                    logging.info(f"Created new fire with id {fire.id}")
+
+
+        #     tree = BallTree(np.array(queried_center_lst), leaf_size=2, metric='haversine')
+        #     dist, index = tree.query(np.array(found_center_lst), k=1)
+        #     logging.info('Constructed BallTree for linking old fires')
+
+        #     for i, (ind,d) in enumerate(zip(index, dist)):
+        #         d *= 6371 # convert to km
+        #         cluster = cluster_lst[i]
+        #         if d < 15:
+        #             fire = queried_fires[int(ind)]
+        #             misc_functions.update_FireModel(cluster, fire)
+        #             logging.info(f"Updated fire with id {fire.id}")
+        #         else:
+        #             fire = misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'])
+        #             # print(debug_fire.id)
+        #             logging.info(f"Created new fire with id {fire.id}   debug {i}")
+
+        else:
+            for cluster in cluster_lst:
+                fire = misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'])
+                logging.info(f"Created new fire with id {fire.id}")
 
     # Writing that we predicted using the file in classified_lst.pkl
     with open(os.path.join(config.MEDIA_FOLDER, 'misc', 'classified_lst.pkl'), 'rb') as f:
@@ -452,6 +507,8 @@ def classify(bandpath_dct):
 
     # If every folder has more than enough files
     try:
+        # print(all(len(folder) == max_files for folder in folder_lst))
+        # print(len(folder) == max_files for folder in folder_lst)
         if all(len(folder) == max_files for folder in folder_lst):
             for folder in folder_lst:
                 os.remove(misc_functions.find_oldest_file(folder))

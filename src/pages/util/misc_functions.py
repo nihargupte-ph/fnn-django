@@ -286,11 +286,80 @@ def snap_picture(xds, lon, lat, radius):
     pic_IObytes = io.BytesIO()
     plt.savefig(pic_IObytes,  format='png')
     pic_IObytes.seek(0)
-    data = ContentFile(pic_IObytes.read(), name=' temp.jpg')
+    data = ContentFile(pic_IObytes.read(), name='temp.jpg')
     plt.close()
     xds.close()
 
     return data
+
+def snap_video(lon, lat, radius):
+    """ 
+    Parameters
+    ----------
+    lon : float
+        Longitude of the fire
+    lat : float
+        Latitude of the fire
+    radius : float
+        radius in km of image
+    Returns
+    ----------
+    data : django.core.files.base.ContentFile
+        Content file we will be saving into the django ImageField. This will be a 
+        gif. 
+    """
+    from wand.image import Image
+
+    # Getting ordered diff folder so far to create images
+    diff_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'diff')
+    diff_file_lst = os.listdir(diff_folder)
+    diff_file_lst = sorted(diff_file_lst, key=key_from_filestring)
+
+    image_data_lst = []
+    for i, filename in enumerate(diff_file_lst):
+        # Open File
+        diff_xds = xarray.open_dataset(os.path.join(diff_folder, filename))
+
+        # Project and Clip
+        diff_xds = diff_xds.rio.reproject("EPSG:3857")
+        buffered_point = geodesic_point_buffer(lon=lon, lat=lat, km=radius)
+        clipped_xds = diff_xds.rio.clip([buffered_point], "EPSG:4326")
+        fig, ax = plt.subplots()
+        clipped_xds.Rad.plot(ax=ax, cmap=plt.cm.viridis, cbar_kwargs={'label': 'Alarm Level'})
+
+        # Formatting plot
+        ax.axes.get_xaxis().set_visible(False)
+        ax.axes.get_yaxis().set_visible(False)
+        ax.set_title("Zoomed in fire pictures")
+        diff_xds.close()
+
+        # Saving plot
+        image_data = io.BytesIO()
+        plt.savefig(image_data, format='png')
+        image_data.seek(0)
+        image_data_lst.append(image_data)
+        with Image(file=image_data) as img:
+            img.save(filename=f'/home/n/Documents/Research/fnn-django/src/media/tmp/hi{i}.png')
+        plt.close()
+
+    # Creating gif
+    with Image() as gif:
+        # Add new frames into sequence
+        for image_data in image_data_lst:
+            print(image_data)
+            with Image(filename=image_data) as img:
+                gif.sequence.append(img)
+        # Create progressive delay for each frame
+        for cursor in range(len(gif.sequence)):
+            with gif.sequence[cursor] as frame:
+                frame.delay = 10
+    # Set layer type
+    gif.type = 'optimize'
+
+    gif.save(filename='/home/n/Documents/Research/fnn-django/src/media/tmp/animated.gif')
+    # byte_gif = io.BytesIO(gif)
+
+    return None
 
 def get_graph_points(px_idx):
     """ 
@@ -335,7 +404,7 @@ def get_graph_points(px_idx):
     for xds_path in pred_file_lst:
         xds = xarray.open_dataset(os.path.join(pred_folder, xds_path))
         pred_graph_pts.append(xds.Rad.values[px_idx[1], px_idx[0]])
-        time_graph_pts.append(xds.t.values)
+        time_graph_pts.append(dt64_to_datetime(xds.t.values))
         xds.close()
 
     diff_graph_pts = []
@@ -373,8 +442,14 @@ def cluster_to_FireModel(cluster, diff_xds_path):
         will add the anomalies to a newly created FireModel
     diff_xds_path : str
         Path to diff_xds that we just predicted
+
+    Returns
+    ----------
+    fire : pages.FireModel
+        updated fire
     """
     from pages.models import FireModel
+    from django.core.management import call_command
 
     xds = xarray.open_dataset(diff_xds_path)
     
@@ -393,6 +468,9 @@ def cluster_to_FireModel(cluster, diff_xds_path):
     # Cluster list, we wrap in a list as when more clusters are added we want to append them to the array
     cluster_lst_bin = obj_to_binfield([cluster])
 
+    # Snapping Video
+    # content_file = snap_video(lon, lat, 20)
+
     # Snapping Pictures
     content_file = snap_picture(xds, lon, lat, 20)
 
@@ -406,7 +484,7 @@ def cluster_to_FireModel(cluster, diff_xds_path):
 
     # TODO Insert names, short_description, long_description, probability here
     
-    FireModel.objects.create(
+    fire = FireModel.objects.create(
         longitude=lon,
         latitude=lat,
         timestamp=avg_timestamp,
@@ -426,6 +504,15 @@ def cluster_to_FireModel(cluster, diff_xds_path):
 
     xds.close()
 
+    # Sending emails
+    try:
+        call_command('send_emails', lon, lat, avg_timestamp, 'link')
+        logging.info('Sent emails')
+    except:
+        logging.warning('Failed to send emails')
+
+    return fire
+
 def update_FireModel(cluster, fire):
     """ 
     Parameters
@@ -434,6 +521,11 @@ def update_FireModel(cluster, fire):
         numpy array containing a list of anomalies FireModel
     fire : pages.models.FireModel
         firemodel we are updating
+
+    Returns
+    ----------
+    fire : pages.FireModel
+        updated fire
     """
     # Add new cluster to end of cluster list
     current_cluster_lst = binfield_to_obj(fire.cluster_lst)
@@ -450,6 +542,8 @@ def update_FireModel(cluster, fire):
     fire.latest_timestamp = avg_timestamp
     
     fire.save()
+
+    return fire
 
 def update_FireModel_plots(diff_xds_path, cloud_xds_path, fire):
     """ 
@@ -485,7 +579,7 @@ def update_FireModel_plots(diff_xds_path, cloud_xds_path, fire):
     cloud_xds = xarray.open_dataset(os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'cloud', cloud_basename))
 
     # Getting new points
-    new_time_pt = diff_xds.t.values
+    new_time_pt = dt64_to_datetime(diff_xds.t.values)
     new_pred_pt = pred_xds.Rad.values[px_idx_y, px_idx_x]
     new_diff_pt = diff_xds.Rad.values[px_idx_y, px_idx_x]
     new_cloud_pt = cloud_xds.Cloud.values[px_idx_y, px_idx_x]
@@ -515,7 +609,6 @@ def update_FireModel_plots(diff_xds_path, cloud_xds_path, fire):
     pred_xds.close()
     diff_xds.close()
     cloud_xds.close()
-
 
 def update_picture():
     # TODO

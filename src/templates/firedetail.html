@@ -11,7 +11,7 @@
                     <h4 class="text-white">{{fire.name}}</h4>
                     <p class="text-white-50 mb-0">Latitude: {{fire.latitude|floatformat:3}}</p>
                     <p class="text-white-50 mb-0">Longitude: {{fire.longitude|floatformat:3}}</p>
-                    <p class="text-white-50 mb-0">Timestamp: {{fire.timestamp}}</p>
+                    <p class="text-white-50 mb-0">Time: {{fire.timestamp}}</p>
                     <p class="text-white-50 mb-0"> Description: {{fire.short_description}}</p>
                     <p class="text-white-50 mb-0">Cause: {{fire.cause}}</p>
                     <p class="text-white-50 mb-0">Probability: {{fire.probability}}</p>
@@ -73,6 +73,20 @@ var config = {
     data: {
         labels: [{% for item in time_pts %}'{{item}}',{% endfor %}],
         datasets: [
+        {
+            label: 'Alarm Threshold',
+            data: [{% for item in cloud_bound %}{{item}},{% endfor %}],
+            yAxisID: 'B',
+            backgroundColor: [
+                'rgba(0, 0, 0, 0)',
+            ],
+            borderColor: [
+                'rgba(220, 227, 223, 1)',
+            ],
+            borderWidth: 1,
+            borderDash: [10,5],
+            steppedLine: true,
+        },
         {
             label: 'Alarm Level',
             data: [{% for item in diff_pts %}{{item}},{% endfor %}],

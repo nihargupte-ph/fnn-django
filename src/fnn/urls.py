@@ -18,13 +18,13 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 
-from pages.views import HomeView, how_it_works_view, fire_page_view, fire_detail_view, index
+from pages.views import HomeView, how_it_works_view, fire_detail_view, index, FirePageView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('home/', HomeView.as_view(), name="home"),
     path('howitworks/', how_it_works_view),
-    path('firepage/', fire_page_view, name='firepage'),
+    path('firepage/', FirePageView.as_view(), name='firepage'),
     path('firedetail/<int:pk>/', fire_detail_view),
     path('index', index),
 ] 
