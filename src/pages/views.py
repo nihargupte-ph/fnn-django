@@ -9,7 +9,7 @@ from django.contrib import messages
 
 from .forms import EmailForm, UnsubEmailForm
 from .models import FireModel, EmailModel
-from .util.misc_functions import binfield_to_obj, dt64_to_datetime
+from .util.misc_functions import binfield_to_obj, dt64_to_datetime, unnan_arr
 
 # Create your views here.
 class HomeView(TemplateView):
@@ -99,16 +99,30 @@ def fire_detail_view(request, pk):
     cloud_graph_pts = binfield_to_obj(fire.cloud_graph_pts)
     actual_7_graph_pts = binfield_to_obj(fire.actual_7_graph_pts)
     actual_14_graph_pts = binfield_to_obj(fire.actual_14_graph_pts)
-    
+
+    # Changing nans to closest non-nan value (also does a simple interpolation)
+    diff_graph_pts = unnan_arr(np.array(diff_graph_pts))
+    pred_graph_pts = unnan_arr(np.array(pred_graph_pts))
+    actual_7_graph_pts = unnan_arr(np.array(actual_7_graph_pts))
+
     fire_start_idx = time_graph_pts.index(min(time_graph_pts, key=lambda x: np.abs(fire.timestamp - x)))
+    
+    # Debug
     print(time_graph_pts)
     print(fire.timestamp, time_graph_pts[fire_start_idx])
     print(type(fire.timestamp), type(time_graph_pts[fire_start_idx]))
-    # Formatting time to be pretty displayed 
-    time_graph_pts = [d.strftime('%b %d %H:%M') for d in time_graph_pts]
-
+    
+    # Formatting time to be displayed in javascript new Date form
+    time_graph_pts = [d.strftime('%Y-%m-%d %H:%M') for d in time_graph_pts]
+    
     # Creating changing bound based on cloud and non-cloud
     cloud_bound = [.17 if pt else .55 for pt in cloud_graph_pts]
+
+    # Zipping time graph points with others
+    pred_graph_pts = list(zip(time_graph_pts, pred_graph_pts))
+    diff_graph_pts = list(zip(time_graph_pts, diff_graph_pts))
+    actual_7_graph_pts = list(zip(time_graph_pts, actual_7_graph_pts))
+    cloud_bound = list(zip(time_graph_pts, cloud_bound))
 
 
     # Creating colors based on cloud or non cloud 

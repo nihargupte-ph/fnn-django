@@ -277,7 +277,9 @@ def predict_cloud(actual_xds_path, cloud_value=1, num_before=8):
     X = np.apply_along_axis(np.all, 2, X)
 
     cloud_xds = xarray.open_dataset(filepaths[0]).copy()
+    print(filepaths[0], cloud_xds.Rad.values.shape, cloud_xds.x.values.shape, cloud_xds.y.values.shape)
     cloud_xds.Rad.values = np.full([cloud_xds.Rad.values.shape[0], cloud_xds.Rad.values.shape[1]], None)
+    print(filepaths[0], cloud_xds.Rad.values.shape, cloud_xds.x.values.shape, cloud_xds.y.values.shape)
     X = xarray.DataArray(X, dims={'y':cloud_xds.y.values, 'x':cloud_xds.x.values})
     cloud_xds['Cloud'] = X
     cloud_xds = cloud_xds.drop(['Rad'])
@@ -515,34 +517,17 @@ def classify(bandpath_dct):
         else:
             new_cluster_lst = cluster_lst
 
-
-        #     tree = BallTree(np.array(queried_center_lst), leaf_size=2, metric='haversine')
-        #     dist, index = tree.query(np.array(found_center_lst), k=1)
-        #     logging.info('Constructed BallTree for linking old fires')
-
-        #     for i, (ind,d) in enumerate(zip(index, dist)):
-        #         d *= 6371 # convert to km
-        #         cluster = cluster_lst[i]
-        #         if d < 15:
-        #             fire = queried_fires[int(ind)]
-        #             misc_functions.update_FireModel(cluster, fire)
-        #             logging.info(f"Updated fire with id {fire.id}")
-        #         else:
-        #             fire = misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'])
-        #             # print(debug_fire.id)
-        #             logging.info(f"Created new fire with id {fire.id}   debug {i}")
-
         for cluster in new_cluster_lst:
             fire = misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'])
             logging.info(f"Created new fire with id {fire.id}")
 
             # Checking for lightning
-            try:
-                lightning_formed, fire = update_lightning(fire)
-                if lightning_formed:
-                    logging.info(f"Fire number {fire.id} was formed by lightning")
-            except:
-                logging.error("Unable to search for nearby lightning strikes")
+            # try:
+            lightning_formed, fire = update_lightning(fire)
+            if lightning_formed:
+                logging.info(f"Fire number {fire.id} was formed by lightning")
+            # except:
+            #     logging.error("Unable to search for nearby lightning strikes")
 
     # Writing that we predicted using the file in classified_lst.pkl
     with open(os.path.join(config.MEDIA_FOLDER, 'misc', 'classified_lst.pkl'), 'rb') as f:

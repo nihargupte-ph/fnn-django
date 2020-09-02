@@ -216,7 +216,6 @@ def callback_GLM(message):
     None
     """
 
-    logging.info("Recieved message from GLM bucket")
     objectId = message.attributes.get('objectId')
     download.download_GLM_goes16_data(objectId)
 
@@ -225,7 +224,6 @@ def callback_GLM(message):
     if len(file_lst) > 100: # this number times 1 minute of data. THIS is how long our search window is
         oldest_file = min(file_lst, key=lambda x: misc_functions.key_from_filestring(x))
         os.remove(os.path.join(config.NC_DATA_FOLDER, 'GLM', oldest_file))
-        logging.info("Removed old GLM file")
 
 
 def pipeline():

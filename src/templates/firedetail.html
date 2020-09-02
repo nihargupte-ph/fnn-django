@@ -14,7 +14,6 @@
                     <p class="text-white-50 mb-0">Time: {{fire.timestamp}}</p>
                     <p class="text-white-50 mb-0"> Description: {{fire.short_description}}</p>
                     <p class="text-white-50 mb-0">Cause: {{fire.cause}}</p>
-                    <p class="text-white-50 mb-0">Probability: {{fire.probability}}</p>
                 </div>
             </div>
         </div>
@@ -25,15 +24,16 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.css" integrity="sha256-aa0xaJgmK/X74WM224KMQeNQC2xYKwlAt08oZqjeF0E=" crossorigin="anonymous" />
         <!-- jQuery -->
         <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-        <canvas id="chart1" width="400" height="300"></canvas>
-        <canvas id="chart2" width="200" height="100"></canvas>
+        <div>
+            <canvas id="chart" width="400" height="300"></canvas>
+        </div>
     </div>
 </section>
 
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.bundle.js"></script>
 <script>
-var ctx = document.getElementById('chart1').getContext('2d');
-
+var ctx = document.getElementById("chart").getContext("2d");
 const verticalLinePlugin = {
         getLinePosition: function (chart, pointIndex) {
             const meta = chart.getDatasetMeta(0); // first dataset is used to discover X coordinate of a point
@@ -71,11 +71,18 @@ Chart.defaults.global.defaultFontColor='rgba(255, 255, 255, 1)'
 var config = {
     type: 'line',
     data: {
-        labels: [{% for item in time_pts %}'{{item}}',{% endfor %}],
+        labels: [{% for time_pt in time_pts %} new Date("{{time_pt}}").toLocaleString(), {% endfor %}],
         datasets: [
         {
             label: 'Alarm Threshold',
-            data: [{% for item in cloud_bound %}{{item}},{% endfor %}],
+            data: [
+                {% for pt in cloud_bound %}
+                    {
+                    t: new Date("{{pt.0}}"),
+                    y: {{ pt.1 }}
+                    },
+                {% endfor %}
+            ],
             yAxisID: 'B',
             backgroundColor: [
                 'rgba(0, 0, 0, 0)',
@@ -89,7 +96,14 @@ var config = {
         },
         {
             label: 'Alarm Level',
-            data: [{% for item in diff_pts %}{{item}},{% endfor %}],
+            data: [
+                {% for pt in diff_pts %}
+                    {
+                    t: new Date("{{pt.0}}"),
+                    y: {{ pt.1 }}
+                    },
+                {% endfor %}
+            ],
             yAxisID: 'B',
             backgroundColor: [
                 'rgba(0, 0, 0, 0)',
@@ -102,7 +116,14 @@ var config = {
         },
         {
             label: 'Predicted Near Infared',
-            data: [{% for item in pred_pts %}{{item}},{% endfor %}],
+            data: [
+                {% for pt in pred_pts %}
+                    {
+                    t: new Date("{{pt.0}}"),
+                    y: {{ pt.1 }}
+                    },
+                {% endfor %}
+            ],
             backgroundColor: [
                 'rgba(0, 253, 220, 0.3)',
             ],
@@ -113,7 +134,14 @@ var config = {
         }, 
         {
             label: 'Actual Near Infared',
-            data: [{% for item in actual_7_pts %}{{item}},{% endfor %}],
+            data: [
+                {% for pt in actual_7_pts %}
+                    {
+                    t: new Date("{{pt.0}}"),
+                    y: {{ pt.1 }}
+                    },
+                {% endfor %}
+            ],
             backgroundColor: [
                 'rgba(220, 0, 115, 0.3)',
             ],
@@ -121,10 +149,9 @@ var config = {
                 'rgba(255, 0, 170, 1)',
             ],
             borderWidth: 3
-        },
-]
-    },
-    options: {
+        },]
+  },
+  options: {
         responsive: true,
         title: {
             display: true,
@@ -139,6 +166,7 @@ var config = {
         },
         scales: {
             xAxes: [{
+                type: 'time',
                 scaleLabel: {
                     display: true,
                 }
@@ -170,7 +198,7 @@ var config = {
     },
     lineAtIndex: [{{ fire_start_idx }}],
 }
-var chart1 = new Chart(ctx, config);
+var myChart = new Chart(ctx, config);
 </script>
 
 

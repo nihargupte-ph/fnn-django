@@ -106,7 +106,6 @@ def download_GLM_goes16_data(objectId):
     """
     try:
         filepath = copy_fromgcs("gcp-public-data-goes-16", objectId, os.path.join(config.NC_DATA_FOLDER, "GLM"))
-        logging.info("Successfully downloaded from GLM bucket")
     except:
         logging.warn("unable to download from GLM bucket")
         return
