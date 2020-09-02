@@ -37,3 +37,6 @@ class FireModel(models.Model):
     cloud_graph_pts      = models.BinaryField(default=obj_to_binfield([]))
     actual_7_graph_pts   = models.BinaryField(default=obj_to_binfield([]))
     actual_14_graph_pts  = models.BinaryField(default=obj_to_binfield([]))
+    lightning_lat        = models.FloatField(null=True, blank=True, default=None)
+    lightning_lon        = models.FloatField(null=True, blank=True, default=None)
+    lightning_timestamp  = models.DateTimeField(null=True, blank=True, default=None)

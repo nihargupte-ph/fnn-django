@@ -102,11 +102,12 @@ def normalize_xds(xds, proj="EPSG:4326"):
         proj_xds = xds.rio.reproject(proj)
         return proj_xds
 
-    print('got here')
     i = 0
     while i < 5: 
         try: 
+            print('got here')
             proj_xds = func_timeout(10, wrapper, args=(xds, proj))
+            print('got here2')
             break
         except FunctionTimedOut:
             logging.warning(f"Reprojection timed out trying again ({i})")
@@ -352,7 +353,6 @@ def classify(bandpath_dct):
         ret = list(zip(anomaly_lons, anomaly_lats, [anomaly_time for _ in anomaly_lats]))
         return ret
 
-
     def cluster_anomalies(anomaly_lst):
         """ 
         Parameters
@@ -386,6 +386,53 @@ def classify(bandpath_dct):
             cluster_lst.append(cluster)
 
         return cluster_lst
+
+    def update_lightning(fire):
+        """ 
+        Parameters
+        ----------
+        fire : pages.models.FireModel
+            Fire model we are checking to see if there is lightning data on
+
+        Returns  
+        ----------
+        lightning_formed : bool
+            True if lightning formed, false otherwise
+        fire : pages.models.FireModel
+            Updated fire model. If there is or is not lightning
+        """
+
+        # Combining xarray datasets in the folder this allows us to only worry about spatial search
+        flash_lat_lst, flash_lon_lst, flash_time_lst = [], [], []
+        glm_folder = os.path.join('/home/n/Documents/Research/fnn-django/src/media/data/GLM')
+        for xds_name in os.listdir(glm_folder):
+            xds = xarray.open_dataset(os.path.join(glm_folder, xds_name))
+            flash_lon_lst.append(xds.flash_lon.values)
+            flash_lat_lst.append(xds.flash_lat.values)
+            flash_time_lst.append(xds.flash_time_offset_of_first_event.values)
+
+        flash_lon_arr = np.concatenate(flash_lon_lst)
+        flash_lat_arr = np.concatenate(flash_lat_lst)
+        flash_time_arr = np.concatenate(flash_time_lst)
+        flash_time_arr = np.array([misc_functions.dt64_to_datetime(dt64) for dt64 in flash_time_arr])
+
+        fire_lon = fire.lon
+        fire_lat = fire.lat
+
+        distance_arr = np.array([misc_functions.haversine(fire_lon, fire_lat, flash_lon, flash_lat) for flash_lon, flash_lat in zip(flash_lon_arr, flash_lat_arr)])
+
+        if np.argmin(distance_arr) < 10: # km 
+            lightning_formed = True
+            closest_flash_idx = np.argmin(distance_arr)
+            flash = (flash_lon_arr[closest_flash_idx], flash_lat_arr[closest_flash_idx], flash_time_arr[closest_flash_idx])
+            fire.lightning_lon = flash[0]
+            fire.lightning_lat = flash[1]
+            fire.lightning_timestamp = flash[2]
+            fire.save()
+        else:
+            lightning_formed = False
+
+        return lightning_formed, fire
 
 
     logging.info('Entered classification')
@@ -449,18 +496,24 @@ def classify(bandpath_dct):
         if not len(queried_center_lst) == 0:
 
             # Linking fires with for loop 
+            new_cluster_lst = []
             for found_idx, found_center in enumerate(found_center_lst):
                 dist_lst = []
+
+                # Getting distance to every queried fire
                 for queried_center in queried_center_lst:
                     dist_lst.append(geopy.distance.distance(found_center, queried_center).km)
+
+                # Finding min distance and if less than 15km updating. Otherwise creating new fire. 
                 min_dist = min(dist_lst)
                 min_idx = dist_lst.index(min_dist)
                 if min_dist <= 15: # km
                     fire = misc_functions.update_FireModel(cluster_lst[found_idx], queried_fires[min_idx])
                     logging.info(f"Updated fire with id {fire.id}")
                 else:
-                    fire = misc_functions.cluster_to_FireModel(cluster_lst[found_idx], bandpath_dct['diff'])
-                    logging.info(f"Created new fire with id {fire.id}")
+                    new_cluster_lst.append(cluster_lst[found_idx])
+        else:
+            new_cluster_lst = cluster_lst
 
 
         #     tree = BallTree(np.array(queried_center_lst), leaf_size=2, metric='haversine')
@@ -479,10 +532,17 @@ def classify(bandpath_dct):
         #             # print(debug_fire.id)
         #             logging.info(f"Created new fire with id {fire.id}   debug {i}")
 
-        else:
-            for cluster in cluster_lst:
-                fire = misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'])
-                logging.info(f"Created new fire with id {fire.id}")
+        for cluster in new_cluster_lst:
+            fire = misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'])
+            logging.info(f"Created new fire with id {fire.id}")
+
+            # Checking for lightning
+            try:
+                lightning_formed, fire = update_lightning(fire)
+                if lightning_formed:
+                    logging.info(f"Fire number {fire.id} was formed by lightning")
+            except:
+                logging.error("Unable to search for nearby lightning strikes")
 
     # Writing that we predicted using the file in classified_lst.pkl
     with open(os.path.join(config.MEDIA_FOLDER, 'misc', 'classified_lst.pkl'), 'rb') as f:

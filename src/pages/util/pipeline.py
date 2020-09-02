@@ -3,6 +3,7 @@ import datetime
 import logging
 import os
 import pickle
+import threading
 
 # Third Party imports
 from concurrent.futures import TimeoutError
@@ -150,6 +151,7 @@ def clear_folders():
     os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'diff'), 
     os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'pred'), 
     os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'cloud'),
+    os.path.join(config.NC_DATA_FOLDER, 'GLM'),
     os.path.join(config.MEDIA_FOLDER, 'tmp')
     ]
 
@@ -157,21 +159,20 @@ def clear_folders():
         for f in os.listdir(folder):
             os.remove(os.path.join(folder, f))
 
-def callback(message):
+def callback_ABI(message):
     """
     Parameters
     ----------
     message : str
-        message recieved by subscriber
+        message recieved by subscriber. Handles messages from ABI subscription
 
     Returns
     ----------
-
+    None 
     """
 
     # Getting relavent bands 
     band_path = filter_band(message)
-    # band_path = (7, 'ABI-L1b-RadC/2020/240/00/OR_ABI-L1b-RadC-M6C07_G16_s20202400056172_e20202400058557_c20202400058597.nc')
 
     if band_path[0] == None:
         message.ack()
@@ -203,6 +204,30 @@ def callback(message):
         predict.classify(bandpath_dct)
         return
 
+def callback_GLM(message):
+    """
+    Parameters
+    ----------
+    message : str
+        message recieved by subscriber. Handles messages from GLM subscription
+
+    Returns
+    ----------
+    None
+    """
+
+    logging.info("Recieved message from GLM bucket")
+    objectId = message.attributes.get('objectId')
+    download.download_GLM_goes16_data(objectId)
+
+    # Dealing with cleanup, we don't want any more than the specified number of files in the GLM folder. 
+    file_lst = os.listdir(os.path.join(config.NC_DATA_FOLDER, 'GLM'))
+    if len(file_lst) > 100: # this number times 1 minute of data. THIS is how long our search window is
+        oldest_file = min(file_lst, key=lambda x: misc_functions.key_from_filestring(x))
+        os.remove(os.path.join(config.NC_DATA_FOLDER, 'GLM', oldest_file))
+        logging.info("Removed old GLM file")
+
+
 def pipeline():
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = config.API_KEY
     logging.basicConfig(level=logging.INFO)
@@ -222,26 +247,34 @@ def pipeline():
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
     project_id = "fire-neural-network"
-    subscription_id = "goes16-ABI-data-sub-filtered"
+    subscription_id1 = "goes16-ABI-data-sub-filtered"
+    subscription_id2 = "goes16-GLM-data-sub-filtered"
 
-    subscriber = pubsub_v1.SubscriberClient()
-    subscription_path = subscriber.subscription_path(project_id, subscription_id)
-    streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
+    subscriber1 = pubsub_v1.SubscriberClient()
+    subscriber2 = pubsub_v1.SubscriberClient()
+    subscription_path1 = subscriber1.subscription_path(project_id, subscription_id1)
+    streaming_pull_future1 = subscriber1.subscribe(subscription_path1, callback=callback_ABI)
+    subscription_path2 = subscriber2.subscription_path(project_id, subscription_id2)
+    streaming_pull_future2 = subscriber2.subscribe(subscription_path2, callback=callback_GLM)
     try: 
         clear_folders()
         logging.info("Successfully cleared folders")
     except:
         logging.critical("Unable to clear folders")
-    logging.info("Listening for messages on {}..\n".format(subscription_path))
+    logging.info(f"Listening for messages on {subscription_path1} and {subscription_path2}..\n")
+
+    subscriber_shutdown = threading.Event()
+    streaming_pull_future1.add_done_callback(lambda result: subscriber_shutdown.set())
+    streaming_pull_future2.add_done_callback(lambda result: subscriber_shutdown.set())
+
 
     # Wrap subscriber in a 'with' block to automatically call close() when done.
-    with subscriber:
-        try:
-            # When `timeout` is not set, result() will block indefinitely,
-            # unless an exception is encountered first.
-            streaming_pull_future.result()
-        except TimeoutError:
-            streaming_pull_future.cancel()
+    with subscriber1, subscriber2:
+        subscriber_shutdown.wait()
+        streaming_pull_future1.cancel()
+        streaming_pull_future2.cancel()
 
 # gcloud beta pubsub subscriptions create goes16-ABI-data-sub-filtered --project fire-neural-network --topic projects/gcp-public-data---goes-16/topics/gcp-public-data-goes-16 --message-filter='hasPrefix(attributes.objectId,"ABI-L1b-RadC/")' --enable-message-ordering
+# gcloud beta pubsub subscriptions create goes16-GLM-data-sub-filtered --project fire-neural-network --topic projects/gcp-public-data---goes-16/topics/gcp-public-data-goes-16 --message-filter='hasPrefix(attributes.objectId,"GLM-L2-LCFA/")' --enable-message-ordering
 # gcloud pubsub subscriptions seek projects/fire-neural-network/subscriptions/goes16-ABI-data-sub-filtered --time=$(date +%Y-%m-%dT%H:%M:%S) 
+# gcloud pubsub subscriptions seek projects/fire-neural-network/subscriptions/goes16-GLM-data-sub-filtered --time=$(date +%Y-%m-%dT%H:%M:%S) 
