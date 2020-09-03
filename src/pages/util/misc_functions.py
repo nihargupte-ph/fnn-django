@@ -359,7 +359,7 @@ def snap_video(lon, lat, radius):
         # Plotting
         # We are adding a buffer since the fire may increase more NOTE we might need to increase this number to 2 or something later depending
         # on how big the fires are 
-        clipped_xds.Rad.plot(ax=ax, cmap=plt.cm.viridis, cbar_kwargs={'label': 'Alarm Level'}, vmin=vmin, vmax=vmax+.5) 
+        clipped_xds.Rad.plot(ax=ax, cmap=plt.cm.viridis, cbar_kwargs={'label': 'Alarm Level'}, vmin=vmin, vmax=vmax+.3) 
         
         # Formatting plot
         ax.axes.get_xaxis().set_visible(False)
