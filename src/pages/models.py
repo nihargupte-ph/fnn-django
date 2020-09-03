@@ -23,6 +23,7 @@ class FireModel(models.Model):
     timestamp            = models.DateTimeField()
     latest_timestamp     = models.DateTimeField()
     image                = models.ImageField(upload_to='fires_pics', null=True, blank=True)
+    video                = models.ImageField(null=True, blank=True)
     cause                = models.CharField(max_length=50, choices=((LIG, 'lightning'), (MAN, 'man-made'), (UNK, 'unknown'),), default='unknown')
     short_description    = models.CharField(max_length=200, null=True, blank=True)
     long_description     = models.CharField(max_length=1000, null=True, blank=True)

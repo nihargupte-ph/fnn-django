@@ -196,8 +196,12 @@ def callback_ABI(message):
         message.nack()
         return 
     
-    bandpath_dct = get_associate_ABI(path)
     
+    # with open("/home/n/Documents/Research/fnn-django/src/media/misc/classified_lst.pkl", "wb") as f:
+    #     pickle.dump([], f)
+    # path = message
+    bandpath_dct = get_associate_ABI(path)
+
     if bandpath_dct == None:
         return
     else:
@@ -229,20 +233,17 @@ def callback_GLM(message):
 def pipeline():
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = config.API_KEY
     logging.basicConfig(level=logging.INFO)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
     
     # diff_folder, cloud_folder = '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff', '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud'
     # diff_lst, cloud_lst = os.listdir(diff_folder), os.listdir(cloud_folder)
-    # for diff_file, cloud_file in zip(diff_lst[:4], cloud_lst[:4]):
+    # diff_lst = sorted(diff_lst, key=misc_functions.key_from_filestring)
+    # for diff_file in diff_lst[:2]:
     #     import xarray
     #     xds = xarray.open_dataset(os.path.join(diff_folder, diff_file))
     #     print(f'tstart  {xds.t.values}')
-    #     bandpath_dct = {
-    #         'diff': os.path.join(diff_folder, diff_file),
-    #         'cloud': os.path.join(cloud_folder, cloud_file)
-    #     }
-    #     callback(bandpath_dct)
+    #     callback_ABI(os.path.join(diff_folder, diff_file))
 
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
     project_id = "fire-neural-network"
     subscription_id1 = "goes16-ABI-data-sub-filtered"

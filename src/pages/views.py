@@ -52,7 +52,7 @@ class FirePageView(ListView):
     template_name = 'firepage.html'
     context_object_name = 'fire_list'
     ordering = ['-timestamp']
-    paginate_by = 3
+    paginate_by = 50
 
 class EmailUnsubscribeView(TemplateView):
     template_name = "emailunsub.html"

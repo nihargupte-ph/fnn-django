@@ -304,9 +304,10 @@ def snap_video(lon, lat, radius):
         radius in km of image
     Returns
     ----------
-    data : django.core.files.base.ContentFile
-        Content file we will be saving into the django ImageField. This will be a 
-        gif. 
+    filename : str
+        Filename we will be saving into the django ImageField. This will be a 
+        gif. We don't actually create a content file since for some reason, making the 
+        content file/converting to binary freezes the image 
     """
     from wand.image import Image
 
@@ -315,7 +316,8 @@ def snap_video(lon, lat, radius):
     diff_file_lst = os.listdir(diff_folder)
     diff_file_lst = sorted(diff_file_lst, key=key_from_filestring)
 
-    image_data_lst = []
+    clipped_xds_lst = []
+    vmin, vmax = 100000, -100000
     for i, filename in enumerate(diff_file_lst):
         # Open File
         diff_xds = xarray.open_dataset(os.path.join(diff_folder, filename))
@@ -324,42 +326,65 @@ def snap_video(lon, lat, radius):
         diff_xds = diff_xds.rio.reproject("EPSG:3857")
         buffered_point = geodesic_point_buffer(lon=lon, lat=lat, km=radius)
         clipped_xds = diff_xds.rio.clip([buffered_point], "EPSG:4326")
-        fig, ax = plt.subplots()
-        clipped_xds.Rad.plot(ax=ax, cmap=plt.cm.viridis, cbar_kwargs={'label': 'Alarm Level'})
 
-        # Formatting plot
-        ax.axes.get_xaxis().set_visible(False)
-        ax.axes.get_yaxis().set_visible(False)
-        ax.set_title("Zoomed in fire pictures")
+        # Getting minimum for this set of pictures
+        arr = np.append(clipped_xds.Rad.values.flatten(), vmin)
+        vmin = np.nanmin(arr)
+        arr = np.append(clipped_xds.Rad.values.flatten(), vmax)
+        vmax = np.nanmax(arr)
+
+        clipped_xds_lst.append(clipped_xds)
+
         diff_xds.close()
 
-        # Saving plot
-        image_data = io.BytesIO()
-        plt.savefig(image_data, format='png')
-        image_data.seek(0)
-        image_data_lst.append(image_data)
-        with Image(file=image_data) as img:
-            img.save(filename=f'/home/n/Documents/Research/fnn-django/src/media/tmp/hi{i}.png')
-        plt.close()
+
 
     # Creating gif
     with Image() as gif:
-        # Add new frames into sequence
-        for image_data in image_data_lst:
-            print(image_data)
-            with Image(filename=image_data) as img:
+        for clipped_xds in clipped_xds_lst:
+            # Add new frames into sequence
+
+            # Formatting plot
+            fig, ax = plt.subplots()
+            ax.axes.get_xaxis().set_visible(False)
+            ax.axes.get_yaxis().set_visible(False)
+            ax.set_title("Zoomed in fire video")
+            diff_xds.close()
+
+            # Plotting
+            # We are adding a buffer since the fire may increase more NOTE we might need to increase this number to 2 or something later depending
+            # on how big the fires are 
+            clipped_xds.Rad.plot(ax=ax, cmap=plt.cm.viridis, cbar_kwargs={'label': 'Alarm Level'}, vmin=vmin, vmax=vmax+.5) 
+
+            # Saving plot to bytes
+            image_data = io.BytesIO()
+            plt.savefig(image_data, format='png')
+            image_data.seek(0)
+            with Image(file=image_data) as img:
                 gif.sequence.append(img)
-        # Create progressive delay for each frame
+            
+            plt.close()
+
+        # Create delay for each frame with last one having a 100 second delay
         for cursor in range(len(gif.sequence)):
             with gif.sequence[cursor] as frame:
-                frame.delay = 10
-    # Set layer type
-    gif.type = 'optimize'
+                if cursor == len(gif.sequence) - 1:
+                    frame.delay = 100
+                else:
+                    frame.delay = 12
 
-    gif.save(filename='/home/n/Documents/Research/fnn-django/src/media/tmp/animated.gif')
-    # byte_gif = io.BytesIO(gif)
+        clipped_xds.close()
+        
+        # Set layer type
+        gif.type = 'optimize'
+        
+        # Converting to django contentfile
+        filename = os.path.join('fires_gifs', 'vid_%d.gif' % time.time())
+        filepath = os.path.join(config.MEDIA_FOLDER, filename)
+        gif.format = 'gif'
+        gif.save(filename=filepath)
 
-    return None
+    return filename
 
 def get_graph_points(px_idx):
     """ 
@@ -433,6 +458,25 @@ def get_graph_points(px_idx):
 
     return time_graph_pts, pred_graph_pts, diff_graph_pts, cloud_graph_pts, actual_7_graph_pts, actual_14_graph_pts
 
+def create_FireModel_video(fire):
+    """ 
+    Parameters
+    ----------
+    fire : pages.FireModel
+        FireModel we want to record
+    
+    Return
+    ----------
+    fire : pages.FireModel
+        updated FireModel 
+    """ 
+    # Snapping Video
+    gif_filepath = snap_video(fire.longitude, fire.latitude, 20)
+    fire.video = gif_filepath
+    fire.save()
+
+    return fire
+
 def cluster_to_FireModel(cluster, diff_xds_path):
     """ 
     Parameters
@@ -468,11 +512,8 @@ def cluster_to_FireModel(cluster, diff_xds_path):
     # Cluster list, we wrap in a list as when more clusters are added we want to append them to the array
     cluster_lst_bin = obj_to_binfield([cluster])
 
-    # Snapping Video
-    # content_file = snap_video(lon, lat, 20)
-
     # Snapping Pictures
-    content_file = snap_picture(xds, lon, lat, 20)
+    jpg_content_file = snap_picture(xds, lon, lat, 20)
 
     # Getting index in xarrays
     px_idx = px_idx_lst[ll_idx]
@@ -491,7 +532,7 @@ def cluster_to_FireModel(cluster, diff_xds_path):
         latest_timestamp=avg_timestamp, 
         anomaly_arr=anom_arr_bin,
         cluster_lst=cluster_lst_bin,
-        image=content_file, 
+        image=jpg_content_file, 
         px_idx_x=px_idx[0],
         px_idx_y=px_idx[1],
         time_graph_pts=obj_to_binfield(time_graph_pts),

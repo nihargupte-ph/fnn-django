@@ -418,8 +418,8 @@ def classify(bandpath_dct):
         flash_time_arr = np.concatenate(flash_time_lst)
         flash_time_arr = np.array([misc_functions.dt64_to_datetime(dt64) for dt64 in flash_time_arr])
 
-        fire_lon = fire.lon
-        fire_lat = fire.lat
+        fire_lon = fire.longitude
+        fire_lat = fire.latitude
 
         distance_arr = np.array([misc_functions.haversine(fire_lon, fire_lat, flash_lon, flash_lat) for flash_lon, flash_lat in zip(flash_lon_arr, flash_lat_arr)])
 
@@ -438,11 +438,11 @@ def classify(bandpath_dct):
 
 
     logging.info('Entered classification')
-    # try:
-    anomaly_lst = get_anomalies(bandpath_dct)
-    logging.info(f"Got anomalies. {len(anomaly_lst)} anomalies detected")
-    # except:
-    #     logging.critical("Unable to get anomalies")
+    try:
+        anomaly_lst = get_anomalies(bandpath_dct)
+        logging.info(f"Got anomalies. {len(anomaly_lst)} anomalies detected")
+    except:
+        logging.critical("Unable to get anomalies")
 
     if len(anomaly_lst) == 0:
         fire_found = False
@@ -468,8 +468,6 @@ def classify(bandpath_dct):
             ll_idx = vals.index(max(vals))
             found_lon = cluster[ll_idx, 0]
             found_lat = cluster[ll_idx, 1]
-            # found_lon = np.mean([i[0] for i in cluster])
-            # found_lat = np.mean([i[1] for i in cluster])
             found_center_lst.append((found_lat, found_lon))
         xds.close()
     else:
@@ -483,7 +481,6 @@ def classify(bandpath_dct):
     # Updating the plots of fires detected in the last time_filter 
     for fire in queried_fires:
         misc_functions.update_FireModel_plots(bandpath_dct['diff'], bandpath_dct['cloud'], fire)
-        # print(fire.id, fire.latest_timestamp, anomaly_time)
 
     if fire_found:
         queried_center_lst = []
@@ -522,12 +519,19 @@ def classify(bandpath_dct):
             logging.info(f"Created new fire with id {fire.id}")
 
             # Checking for lightning
-            # try:
-            lightning_formed, fire = update_lightning(fire)
-            if lightning_formed:
-                logging.info(f"Fire number {fire.id} was formed by lightning")
-            # except:
-            #     logging.error("Unable to search for nearby lightning strikes")
+            try:
+                lightning_formed, fire = update_lightning(fire)
+                if lightning_formed:
+                    logging.info(f"Fire number {fire.id} was formed by lightning")
+            except:
+                logging.error("Unable to search for nearby lightning strikes")
+
+            # Recording video after sending emails
+            try:
+                fire = misc_functions.create_FireModel_video(fire)
+                logging.info("Successfully recorded video")
+            except:
+                logging.warning("Unable to record video")
 
     # Writing that we predicted using the file in classified_lst.pkl
     with open(os.path.join(config.MEDIA_FOLDER, 'misc', 'classified_lst.pkl'), 'rb') as f:
@@ -552,8 +556,6 @@ def classify(bandpath_dct):
 
     # If every folder has more than enough files
     try:
-        # print(all(len(folder) == max_files for folder in folder_lst))
-        # print(len(folder) == max_files for folder in folder_lst)
         if all(len(folder) == max_files for folder in folder_lst):
             for folder in folder_lst:
                 os.remove(misc_functions.find_oldest_file(folder))
