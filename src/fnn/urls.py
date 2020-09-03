@@ -23,7 +23,7 @@ from pages.views import HomeView, how_it_works_view, fire_detail_view, EmailUnsu
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('home/', HomeView.as_view(), name="home"),
-    path('howitworks/', how_it_works_view),
+    # path('howitworks/', how_it_works_view),
     path('firepage/', FirePageView.as_view(), name='firepage'),
     path('firedetail/<int:pk>/', fire_detail_view),
     path('emailunsub/', EmailUnsubscribeView.as_view(), name='emailunsub'),

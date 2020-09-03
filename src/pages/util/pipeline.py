@@ -201,6 +201,7 @@ def callback_ABI(message):
     #     pickle.dump([], f)
     # path = message
     bandpath_dct = get_associate_ABI(path)
+    # bandpath_dct = get_associate_ABI(message)
 
     if bandpath_dct == None:
         return
@@ -227,7 +228,10 @@ def callback_GLM(message):
     file_lst = os.listdir(os.path.join(config.NC_DATA_FOLDER, 'GLM'))
     if len(file_lst) > 100: # this number times 1 minute of data. THIS is how long our search window is
         oldest_file = min(file_lst, key=lambda x: misc_functions.key_from_filestring(x))
-        os.remove(os.path.join(config.NC_DATA_FOLDER, 'GLM', oldest_file))
+        try:
+            os.remove(os.path.join(config.NC_DATA_FOLDER, 'GLM', oldest_file))
+        except FileNotFoundError:
+            pass
 
 
 def pipeline():
@@ -238,12 +242,11 @@ def pipeline():
     # diff_folder, cloud_folder = '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff', '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud'
     # diff_lst, cloud_lst = os.listdir(diff_folder), os.listdir(cloud_folder)
     # diff_lst = sorted(diff_lst, key=misc_functions.key_from_filestring)
-    # for diff_file in diff_lst[:2]:
+    # for diff_file in diff_lst[:10]:
     #     import xarray
     #     xds = xarray.open_dataset(os.path.join(diff_folder, diff_file))
     #     print(f'tstart  {xds.t.values}')
     #     callback_ABI(os.path.join(diff_folder, diff_file))
-
 
     project_id = "fire-neural-network"
     subscription_id1 = "goes16-ABI-data-sub-filtered"

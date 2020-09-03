@@ -105,9 +105,9 @@ def fire_detail_view(request, pk):
     pred_graph_pts = unnan_arr(np.array(pred_graph_pts))
     actual_7_graph_pts = unnan_arr(np.array(actual_7_graph_pts))
 
-    fire_start_idx = time_graph_pts.index(min(time_graph_pts, key=lambda x: np.abs(fire.timestamp - x)))
+    # NOTE The negative one is is weird but it works, the actual timestamp is right but the indicator keeps being 1 off
+    fire_start_idx = time_graph_pts.index(min(time_graph_pts, key=lambda x: np.abs(fire.timestamp - x))) - 1
     
-    # Debug
     print(time_graph_pts)
     print(fire.timestamp, time_graph_pts[fire_start_idx])
     print(type(fire.timestamp), type(time_graph_pts[fire_start_idx]))

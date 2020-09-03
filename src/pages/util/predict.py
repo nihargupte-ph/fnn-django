@@ -477,10 +477,7 @@ def classify(bandpath_dct):
         
     time_filter = anomaly_time - datetime.timedelta(days=1)
     queried_fires = FireModel.objects.filter(latest_timestamp__gt=time_filter)
-
-    # Updating the plots of fires detected in the last time_filter 
-    for fire in queried_fires:
-        misc_functions.update_FireModel_plots(bandpath_dct['diff'], bandpath_dct['cloud'], fire)
+    unqueried_fires = FireModel.objects.filter(latest_timestamp__lt=time_filter)
 
     if fire_found:
         queried_center_lst = []
@@ -521,7 +518,7 @@ def classify(bandpath_dct):
             # Checking for lightning
             try:
                 lightning_formed, fire = update_lightning(fire)
-                if lightning_formed:
+                if lightning_formed: 
                     logging.info(f"Fire number {fire.id} was formed by lightning")
             except:
                 logging.error("Unable to search for nearby lightning strikes")
@@ -543,9 +540,19 @@ def classify(bandpath_dct):
     with open(os.path.join(config.MEDIA_FOLDER, 'misc', 'classified_lst.pkl'), 'wb') as f:
         pickle.dump(classified_lst, f)
 
+    # Updating the plots and videos of fires detected in the last time_filter 
+    for fire in queried_fires:
+        misc_functions.update_FireModel_plots(bandpath_dct['diff'], bandpath_dct['cloud'], fire)
+        misc_functions.update_FireModel_video(fire, xds)
+
+    # Unqueried fires we delete the tmp files
+    for fire in unqueried_fires:
+        if os.path.exists(fire.jpg_folder_path):
+            os.remove(fire.jpg_folder_path)
+
     # Deleting files now that we have used one "group" of data
     # Removing oldest file in actual, prediction, diff, and cloud array if we have at least 12 files (only band 7)
-    max_files = 40
+    max_files = 30
     folder_lst = [
         os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_7'), 
         os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_14'), 
@@ -556,16 +563,9 @@ def classify(bandpath_dct):
 
     # If every folder has more than enough files
     try:
-        if all(len(folder) == max_files for folder in folder_lst):
+        if all(len(os.listdir(folder)) >= max_files for folder in folder_lst):
             for folder in folder_lst:
                 os.remove(misc_functions.find_oldest_file(folder))
             logging.info(f"Successfully deleted oldest files from {folder_lst}")
     except:
         logging.error("Unable to delete files\n" + str(sys.exc_info()[0]))
-
-
-# TMP
-# import xarray
-# import matplotlib.pyplot as plt
-# xds = xarray.open_dataset('/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff/OR_ABI-L1b-RadC-M6C07_G16_s20202391911173_e20202391913557_c20202391914083.nc')
-# xds.Rad.plot()
