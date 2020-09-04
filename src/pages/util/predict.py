@@ -408,7 +408,7 @@ def classify(bandpath_dct):
 
         # Combining xarray datasets in the folder this allows us to only worry about spatial search
         flash_lat_lst, flash_lon_lst, flash_time_lst = [], [], []
-        glm_folder = os.path.join('/home/n/Documents/Research/fnn-django/src/media/data/GLM')
+        glm_folder = os.path.join(config.NC_DATA_FOLDER, 'GLM')
         for xds_name in os.listdir(glm_folder):
             xds = xarray.open_dataset(os.path.join(glm_folder, xds_name))
             flash_lon_lst.append(xds.flash_lon.values)

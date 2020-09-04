@@ -40,7 +40,7 @@ class HomeView(TemplateView):
         if cap_json['success'] == False:
             messages.error(request, "Invalid Captcha Try Again")
             return_success = False
-            return HttpResponseRedirect("/home")
+            return HttpResponseRedirect("/")
             
 
 
