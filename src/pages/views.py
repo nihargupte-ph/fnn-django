@@ -114,10 +114,6 @@ def fire_detail_view(request, pk):
     else:
         lightning_idx = None
     
-    print(time_graph_pts)
-    print(fire.timestamp, time_graph_pts[fire_start_idx])
-    print(type(fire.timestamp), type(time_graph_pts[fire_start_idx]))
-    
     # Formatting time to be displayed in javascript new Date form
     time_graph_pts = [d.strftime('%Y-%m-%d %H:%M') for d in time_graph_pts]
     
