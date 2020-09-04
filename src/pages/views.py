@@ -107,6 +107,12 @@ def fire_detail_view(request, pk):
 
     # NOTE The negative one is is weird but it works, the actual timestamp is right but the indicator keeps being 1 off
     fire_start_idx = time_graph_pts.index(min(time_graph_pts, key=lambda x: np.abs(fire.timestamp - x))) - 1
+
+    # TODO Lightning plotting not implemented just yet
+    if fire.cause == 'lightning':
+        lightning_idx = time_graph_pts.index(min(time_graph_pts, key=lambda x: np.abs(fire.lightning_timestamp - x))) - 1
+    else:
+        lightning_idx = None
     
     print(time_graph_pts)
     print(fire.timestamp, time_graph_pts[fire_start_idx])
@@ -124,7 +130,6 @@ def fire_detail_view(request, pk):
     actual_7_graph_pts = list(zip(time_graph_pts, actual_7_graph_pts))
     cloud_bound = list(zip(time_graph_pts, cloud_bound))
 
-
     # Creating colors based on cloud or non cloud 
     cloud_colors = []
     for pt in cloud_graph_pts:
@@ -141,6 +146,7 @@ def fire_detail_view(request, pk):
         'cloud_bound': cloud_bound, 
         'fire_start_idx':fire_start_idx,
         'actual_7_pts': actual_7_graph_pts,
+        'lightning_idx':lightning_idx,
         }
     return render(request, "firedetail.html", content)
 

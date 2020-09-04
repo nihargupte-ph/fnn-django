@@ -483,10 +483,8 @@ def classify(bandpath_dct):
         queried_center_lst = []
         for fire in queried_fires:
             query_cluster_lst = misc_functions.binfield_to_obj(fire.cluster_lst)
-            recent_cluster = query_cluster_lst[-1] # NOTE maybe should be changed to previous 2 clusters but left as 1 for now
-            recent_lon = np.mean([i[0] for i in recent_cluster])
-            recent_lat = np.mean([i[1] for i in recent_cluster])
-            queried_center_lst.append((recent_lat, recent_lon))
+            # NOTE could change to previous cluster_lst avg
+            queried_center_lst.append((fire.latitude, fire.longitude))
 
         # Use ball tree to link the found cluster centers w/ the recent cluster centers
         if not len(queried_center_lst) == 0:
@@ -503,7 +501,7 @@ def classify(bandpath_dct):
                 # Finding min distance and if less than 15km updating. Otherwise creating new fire. 
                 min_dist = min(dist_lst)
                 min_idx = dist_lst.index(min_dist)
-                if min_dist <= 15: # km
+                if min_dist <= 20: # km
                     fire = misc_functions.update_FireModel(cluster_lst[found_idx], queried_fires[min_idx])
                     logging.info(f"Updated fire with id {fire.id}")
                 else:
@@ -511,19 +509,31 @@ def classify(bandpath_dct):
         else:
             new_cluster_lst = cluster_lst
 
+        # Making new fires or updating old ones
+        fire_lst = []
         for cluster in new_cluster_lst:
             fire = misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'])
             logging.info(f"Created new fire with id {fire.id}")
+            fire_lst.append(fire)
 
             # Checking for lightning
             try:
                 lightning_formed, fire = update_lightning(fire)
                 if lightning_formed: 
+                    fire.cause = 'lightning'
                     logging.info(f"Fire number {fire.id} was formed by lightning")
             except:
                 logging.error("Unable to search for nearby lightning strikes")
 
-            # Recording video after sending emails
+        # debug
+        # print(fire_lst)
+        # print(queried_fires)
+        # for fire in fire_lst:
+        #     for queried_fire in queried_fires:
+        #         print(f"New fire {fire.id} queried fire {queried_fire.id}\
+        #                 distance {geopy.distance.distance((fire.latitude, fire.longitude), (queried_fire.latitude, queried_fire.longitude))}")
+
+            # Recording video after sending emails 
             try:
                 fire = misc_functions.create_FireModel_video(fire)
                 logging.info("Successfully recorded video")
@@ -543,7 +553,7 @@ def classify(bandpath_dct):
     # Updating the plots and videos of fires detected in the last time_filter 
     for fire in queried_fires:
         misc_functions.update_FireModel_plots(bandpath_dct['diff'], bandpath_dct['cloud'], fire)
-        misc_functions.update_FireModel_video(fire, xds)
+        misc_functions.update_FireModel_video(fire, xds) 
 
     # Unqueried fires we delete the tmp files
     for fire in unqueried_fires:

@@ -2,3 +2,4 @@
 .vscode/
 *.jpg
 *.gif
+src/pages/util/config.py

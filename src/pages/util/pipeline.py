@@ -199,7 +199,6 @@ def callback_ABI(message):
     
     # with open("/home/n/Documents/Research/fnn-django/src/media/misc/classified_lst.pkl", "wb") as f:
     #     pickle.dump([], f)
-    # path = message
     bandpath_dct = get_associate_ABI(path)
     # bandpath_dct = get_associate_ABI(message)
 
@@ -242,7 +241,7 @@ def pipeline():
     # diff_folder, cloud_folder = '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff', '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud'
     # diff_lst, cloud_lst = os.listdir(diff_folder), os.listdir(cloud_folder)
     # diff_lst = sorted(diff_lst, key=misc_functions.key_from_filestring)
-    # for diff_file in diff_lst[:10]:
+    # for diff_file in diff_lst:
     #     import xarray
     #     xds = xarray.open_dataset(os.path.join(diff_folder, diff_file))
     #     print(f'tstart  {xds.t.values}')
