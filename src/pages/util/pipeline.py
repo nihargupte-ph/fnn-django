@@ -276,7 +276,6 @@ def pipeline():
     except:
         logging.critical("Unable to clear subscriptions\n" + str(misc_functions.error_handling()))
     print(f"gcloud pubsub subscriptions seek projects/{config.GOOGLE_PROJECT_NAME}/subscriptions/{config.GLM_SUBSCRIPTION_NAME} --time=$(date +%Y-%m-%dT%H:%M:%S)")
-    exit()
 
     # diff_folder, cloud_folder = '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff', '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud'
     # diff_lst, cloud_lst = os.listdir(diff_folder), os.listdir(cloud_folder)
