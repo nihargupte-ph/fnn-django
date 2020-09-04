@@ -4,6 +4,7 @@ import logging
 import os
 import pickle
 import threading
+import sys
 
 # Third Party imports
 from concurrent.futures import TimeoutError
@@ -152,7 +153,6 @@ def clear_folders():
     os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'pred'), 
     os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'cloud'),
     os.path.join(config.NC_DATA_FOLDER, 'GLM'),
-    os.path.join(config.MEDIA_FOLDER, 'tmp')
     ]
 
     for folder in folder_lst:
@@ -241,6 +241,12 @@ def pipeline():
         filename=os.path.join('..', 'logfiles', f'logfile_{datetime.datetime.now()}.log'),
         datefmt='%H:%M:%S',
     )
+    root = logging.getLogger()
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    root.addHandler(handler)
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
     
     # diff_folder, cloud_folder = '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff', '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud'
@@ -262,11 +268,11 @@ def pipeline():
     streaming_pull_future1 = subscriber1.subscribe(subscription_path1, callback=callback_ABI)
     subscription_path2 = subscriber2.subscription_path(project_id, subscription_id2)
     streaming_pull_future2 = subscriber2.subscribe(subscription_path2, callback=callback_GLM)
-    try: 
-        # clear_folders()
-        logging.info("Successfully cleared folders")
-    except:
-        logging.critical("Unable to clear folders")
+    #try: 
+    clear_folders()
+    logging.info("Successfully cleared folders")
+    # except:
+    #     logging.critical("Unable to clear folders")
     logging.info(f"Listening for messages on {subscription_path1} and {subscription_path2}..\n")
 
     subscriber_shutdown = threading.Event()

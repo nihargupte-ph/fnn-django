@@ -4,5 +4,7 @@
 *.gif
 src/pages/util/config.py
 __pycache__
+*.log
 db.sqlite3
 *.pyc
+src/fnn/settings.py
