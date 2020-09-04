@@ -1,7 +1,7 @@
 *.nc
 .vscode/
-src/media/fire_pics/*
-src/media/fire_gifs/*
+src/media/fires_gifs/*
+src/media/fires_pics/*
 src/tmp/*
 src/pages/util/config.py
 __pycache__
