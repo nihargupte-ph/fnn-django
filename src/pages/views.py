@@ -1,6 +1,7 @@
 import requests
 import json
 import numpy as np
+import json
 
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect
@@ -17,7 +18,14 @@ class HomeView(TemplateView):
 
     def get(self, request):
         form = EmailForm()
-        return render(request, self.template_name, {'form':form})
+        with open("/home/n/Keys/config_fnn.json") as config_file:
+            SECRET_CONFIG = json.load(config_file)
+            GOOGLE_MAPS_API = SECRET_CONFIG['GOOGLE_MAPS_API']
+
+        # Querying firemodels to find ones that were in the last 5 hours
+        
+
+        return render(request, self.template_name, {'form':form, 'GOOGLE_MAPS_API':GOOGLE_MAPS_API})
 
     def post(self, request):
         # Getting token 

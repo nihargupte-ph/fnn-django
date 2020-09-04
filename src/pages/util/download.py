@@ -2,6 +2,7 @@
 import os
 import xarray
 import logging
+import sys
 
 # Custom imports
 from pages.util import config 
