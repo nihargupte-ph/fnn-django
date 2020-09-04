@@ -159,6 +159,24 @@ def clear_folders():
         for f in os.listdir(folder):
             os.remove(os.path.join(folder, f))
 
+def initialize_folders():
+    """ If the folders already exist does notthing otherwise addes in the proper folders in the media folder """
+    folder_lst = [
+        os.path.join(config.MEDIA_FOLDER, 'data', 'ABI_RadC', 'actual', 'band_7'),
+        os.path.join(config.MEDIA_FOLDER, 'data', 'ABI_RadC', 'actual', 'band_14'),
+        os.path.join(config.MEDIA_FOLDER, 'data', 'ABI_RadC', 'pred', 'cloud'),
+        os.path.join(config.MEDIA_FOLDER, 'data', 'ABI_RadC', 'pred', 'diff'),
+        os.path.join(config.MEDIA_FOLDER, 'data', 'ABI_RadC', 'pred', 'pred'),
+        os.path.join(config.MEDIA_FOLDER, 'data', 'GLM'),
+        os.path.join(config.MEDIA_FOLDER, 'fires_gifs'),
+        os.path.join(config.MEDIA_FOLDER, 'fires_pics'),
+        os.path.join(config.MEDIA_FOLDER, 'misc'),
+        os.path.join(config.MEDIA_FOLDER, 'tmp')
+    ]
+    for folder in folder_lst:
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+
 def callback_ABI(message):
     """
     Parameters
@@ -249,9 +267,9 @@ def pipeline():
     root.addHandler(handler)
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-    # Clearning google pub/sub channels because overloading channels causes pipeline shutdown
-    os.popen(f"gcloud pubsub subscriptions seek projects/{config.GOOGLE_PROJECT_NAME}/subscriptions/{config.ABI_SUBSCRIPTION_NAME} --time=$(date +%Y-%m-%dT%H:%M:%S)")
-    os.popen(f"gcloud pubsub subscriptions seek projects/{config.GOOGLE_PROJECT_NAME}/subscriptions/{config.ABI_SUBSCRIPTION_NAME} --time=$(date +%Y-%m-%dT%H:%M:%S)")
+    # Clearning google pub/sub channels because overloading channels causes pipeline shutdown, couldn't get subprocess to work
+    os.system(f"gcloud pubsub subscriptions seek projects/{config.GOOGLE_PROJECT_NAME}/subscriptions/{config.ABI_SUBSCRIPTION_NAME} --time=$(date +%Y-%m-%dT%H:%M:%S)")
+    os.system(f"gcloud pubsub subscriptions seek projects/{config.GOOGLE_PROJECT_NAME}/subscriptions/{config.GLM_SUBSCRIPTION_NAME} --time=$(date +%Y-%m-%dT%H:%M:%S)")
         
     # diff_folder, cloud_folder = '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff', '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud'
     # diff_lst, cloud_lst = os.listdir(diff_folder), os.listdir(cloud_folder)
@@ -269,6 +287,7 @@ def pipeline():
     subscription_path2 = subscriber2.subscription_path(config.GOOGLE_PROJECT_NAME, config.GLM_SUBSCRIPTION_NAME)
     streaming_pull_future2 = subscriber2.subscribe(subscription_path2, callback=callback_GLM)
     #try: 
+    initialize_folders()
     clear_folders()
     logging.info("Successfully cleared folders")
     # except:
