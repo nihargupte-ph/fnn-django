@@ -3,3 +3,7 @@
 *.jpg
 *.gif
 src/pages/util/config.py
+__pycache__
+logfiles/*
+db.sqlite3
+*.pyc
