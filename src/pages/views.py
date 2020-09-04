@@ -10,6 +10,7 @@ from django.contrib import messages
 
 from .forms import EmailForm, UnsubEmailForm
 from .models import FireModel, EmailModel
+from .util.config import SECRET_CONFIG_PATH
 from .util.misc_functions import binfield_to_obj, dt64_to_datetime, unnan_arr
 
 # Create your views here.
@@ -18,12 +19,12 @@ class HomeView(TemplateView):
 
     def get(self, request):
         form = EmailForm()
-        with open("/home/n/Keys/config_fnn.json") as config_file:
+        with open(SECRET_CONFIG_PATH) as config_file:
             SECRET_CONFIG = json.load(config_file)
             GOOGLE_MAPS_API = SECRET_CONFIG['GOOGLE_MAPS_API']
 
         # Querying firemodels to find ones that were in the last 5 hours
-        
+
 
         return render(request, self.template_name, {'form':form, 'GOOGLE_MAPS_API':GOOGLE_MAPS_API})
 
