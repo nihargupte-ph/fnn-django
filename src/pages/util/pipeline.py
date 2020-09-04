@@ -240,6 +240,7 @@ def callback_GLM(message):
 
     objectId = message.attributes.get('objectId')
     download.download_GLM_goes16_data(objectId)
+    message.ack()
 
     # Dealing with cleanup, we don't want any more than the specified number of files in the GLM folder. 
     file_lst = os.listdir(os.path.join(config.NC_DATA_FOLDER, 'GLM'))

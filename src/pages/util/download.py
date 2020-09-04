@@ -58,8 +58,8 @@ def download_preproc_ABI(objectId):
     try: 
         filepath = copy_fromgcs("gcp-public-data-goes-16", objectId, os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', f"band_{band_id}"))
         logging.info(f"Successfully downloaded {objectId} from goes-16 ABI_RadC bucket")
-    except:
-        logging.warn(f"file with objectId:{objectId} was not able to be downloaded")
+    except Exception, e:
+        logging.warn(f"file with objectId:{objectId} was not able to be downloaded " + str(e))
         return None
 
     # Normalize
@@ -68,9 +68,8 @@ def download_preproc_ABI(objectId):
         xds_copy = xds.copy()
         xds_copy = normalize_xds(xds_copy)
         logging.info(f"Normalized {objectId}")
-    except:
-        logging.warn(f"file with objectId:{objectId} was not able to be normalized. Deleting and continuing...")
-        os.remove(filepath)
+    except Exception, e:
+        logging.warn(f"file with objectId:{objectId} was not able to be normalized. Deleting and continuing... " + str(e))
         return None
 
     # Clip
@@ -80,9 +79,8 @@ def download_preproc_ABI(objectId):
         os.remove(filepath)
         clipped_xds.to_netcdf(path=filepath, mode='w')
         logging.info(f"Clipped {objectId}")
-    except: 
-        logging.warn(f"file with objectId:{objectId} was not able to be clipped. Deleting and continuing...")
-        os.remove(filepath)
+    except Exception, e: 
+        logging.warn(f"file with objectId:{objectId} was not able to be clipped. Deleting and continuing... " + str(e))
         return None
 
     clipped_xds.close()
