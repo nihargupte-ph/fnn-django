@@ -238,7 +238,7 @@ def pipeline():
     logging.basicConfig(
         level=logging.INFO,
         filemode='a',
-        filename=os.path.join('..', 'logfiles', f'logfile_{datetime.datetime.now()}.log'),
+        filename=os.path.join(config.BASE_FOLDER, 'logfiles', f'logfile_{datetime.datetime.now()}.log'),
         datefmt='%H:%M:%S',
     )
     root = logging.getLogger()
