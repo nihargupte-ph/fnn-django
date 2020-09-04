@@ -287,12 +287,12 @@ def pipeline():
     streaming_pull_future1 = subscriber1.subscribe(subscription_path1, callback=callback_ABI)
     subscription_path2 = subscriber2.subscription_path(config.GOOGLE_PROJECT_NAME, config.GLM_SUBSCRIPTION_NAME)
     streaming_pull_future2 = subscriber2.subscribe(subscription_path2, callback=callback_GLM)
-    #try: 
-    initialize_folders()
-    clear_folders()
-    logging.info("Successfully cleared folders")
-    # except:
-    #     logging.critical("Unable to clear folders")
+    try: 
+        initialize_folders()
+        clear_folders()
+        logging.info("Successfully cleared and initialized folders")
+    except:
+        logging.critical(f"Unable to clear folders\n" + misc_functions.error_handling())
     logging.info(f"Listening for messages on {subscription_path1} and {subscription_path2}..\n")
 
     subscriber_shutdown = threading.Event()

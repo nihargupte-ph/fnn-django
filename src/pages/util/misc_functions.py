@@ -567,7 +567,7 @@ def cluster_to_FireModel(cluster, diff_xds_path):
         call_command('send_emails', lon, lat, avg_timestamp, 'link')
         logging.info('Sent emails')
     except:
-        logging.warning('Failed to send emails')
+        logging.warning('Failed to send emails\n' + str(misc_functions.error_handling()))
 
     return fire
 
@@ -760,3 +760,6 @@ def unnan_arr(data):
     data[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), data[~mask])
 
     return data
+
+def error_handling():
+    return '{}. {}, line: {}'.format(sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2].tb_lineno)

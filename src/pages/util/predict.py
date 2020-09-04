@@ -279,8 +279,8 @@ def predict_cloud(actual_xds_path, cloud_value=1, num_before=8):
     X = xarray.DataArray(X, dims={'y':cloud_xds.y.values, 'x':cloud_xds.x.values})
     try:
         cloud_xds['Cloud'] = X
-    except ValueError: 
-        logging.warn("Cloud assignment error")
+    except: 
+        logging.warn(f"Cloud assignment error\n" + misc_functions.error_handling())
         print(filepaths[0], cloud_xds.Rad.values.shape, cloud_xds.x.values.shape, cloud_xds.y.values.shape)
         print(filepaths[0], cloud_xds.Rad.values.shape, cloud_xds.x.values.shape, cloud_xds.y.values.shape)
         cloud_xds['Cloud'] = np.full([257, 281], None)
@@ -292,7 +292,7 @@ def predict_cloud(actual_xds_path, cloud_value=1, num_before=8):
         cloud_xds.to_netcdf(path=cloud_path, mode='w')
         logging.info("Successfully saved cloud xarray")
     except:
-        logging.error("Unable to save cloud xarray")
+        logging.error("Unable to save cloud xarray\n" + str(misc_functions.error_handling()))
 
     return cloud_path
 
@@ -444,7 +444,7 @@ def classify(bandpath_dct):
         anomaly_lst = get_anomalies(bandpath_dct)
         logging.info(f"Got anomalies. {len(anomaly_lst)} anomalies detected")
     except:
-        logging.critical("Unable to get anomalies")
+        logging.critical(f"Unable to get anomalies\n" + str(misc_functions.error_handling()))
 
     if len(anomaly_lst) == 0:
         fire_found = False
@@ -459,7 +459,7 @@ def classify(bandpath_dct):
             cluster_lst = cluster_anomalies(space_anomaly_lst)
             logging.info(f"Clustered anomalies. {len(cluster_lst)} clusters formed")
         except:
-            logging.critical("Unable to cluster anomalies")
+            logging.critical(f"Unable to cluster anomalies\n" + str(misc_functions.error_handling()))
         cluster_lst = [np.hstack((cluster, np.full(shape=(cluster.shape[0], 1), fill_value=anomaly_time))) for cluster in cluster_lst]
 
         xds = xarray.open_dataset(bandpath_dct['diff'])
@@ -525,7 +525,7 @@ def classify(bandpath_dct):
                     fire.cause = 'lightning'
                     logging.info(f"Fire number {fire.id} was formed by lightning")
             except:
-                logging.error("Unable to search for nearby lightning strikes")
+                logging.error(f"Unable to search for nearby lightning strikes\n" + str(misc_functions.error_handling()))
 
         # debug
         # print(fire_lst)
@@ -540,7 +540,7 @@ def classify(bandpath_dct):
                 fire = misc_functions.create_FireModel_video(fire)
                 logging.info("Successfully recorded video")
             except:
-                logging.warning("Unable to record video")
+                logging.warning(f"Unable to record video\n" + str(misc_functions.error_handling()))
 
     # Writing that we predicted using the file in classified_lst.pkl
     with open(os.path.join(config.MEDIA_FOLDER, 'misc', 'classified_lst.pkl'), 'rb') as f:
@@ -580,4 +580,4 @@ def classify(bandpath_dct):
                 os.remove(misc_functions.find_oldest_file(folder))
             logging.info(f"Successfully deleted oldest files from {folder_lst}")
     except:
-        logging.error("Unable to delete files\n" + str(sys.exc_info()[0]))
+        logging.error("Unable to delete files\n" + str(misc_functions.error_handling()))
