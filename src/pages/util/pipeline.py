@@ -235,7 +235,12 @@ def callback_GLM(message):
 
 def pipeline():
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = config.API_KEY
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        level=logging.INFO,
+        filemode='a',
+        filename=os.path.join('..', 'logfiles', f'logfile_{datetime.datetime.now()}.log'),
+        datefmt='%H:%M:%S',
+    )
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
     
     # diff_folder, cloud_folder = '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff', '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud'
@@ -258,7 +263,7 @@ def pipeline():
     subscription_path2 = subscriber2.subscription_path(project_id, subscription_id2)
     streaming_pull_future2 = subscriber2.subscribe(subscription_path2, callback=callback_GLM)
     try: 
-        clear_folders()
+        # clear_folders()
         logging.info("Successfully cleared folders")
     except:
         logging.critical("Unable to clear folders")

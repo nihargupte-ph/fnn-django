@@ -105,9 +105,7 @@ def normalize_xds(xds, proj="EPSG:4326"):
     i = 0
     while i < 5: 
         try: 
-            print('got here')
             proj_xds = func_timeout(10, wrapper, args=(xds, proj))
-            print('got here2')
             break
         except FunctionTimedOut:
             logging.warning(f"Reprojection timed out trying again ({i})")
