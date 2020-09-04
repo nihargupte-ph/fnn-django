@@ -248,7 +248,11 @@ def pipeline():
     handler.setFormatter(formatter)
     root.addHandler(handler)
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-    
+
+    # Clearning google pub/sub channels because overloading channels causes pipeline shutdown
+    os.popen(f"gcloud pubsub subscriptions seek projects/{config.GOOGLE_PROJECT_NAME}/subscriptions/{config.ABI_SUBSCRIPTION_NAME} --time=$(date +%Y-%m-%dT%H:%M:%S)")
+    os.popen(f"gcloud pubsub subscriptions seek projects/{config.GOOGLE_PROJECT_NAME}/subscriptions/{config.ABI_SUBSCRIPTION_NAME} --time=$(date +%Y-%m-%dT%H:%M:%S)")
+        
     # diff_folder, cloud_folder = '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff', '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud'
     # diff_lst, cloud_lst = os.listdir(diff_folder), os.listdir(cloud_folder)
     # diff_lst = sorted(diff_lst, key=misc_functions.key_from_filestring)
@@ -258,15 +262,11 @@ def pipeline():
     #     print(f'tstart  {xds.t.values}')
     #     callback_ABI(os.path.join(diff_folder, diff_file))
 
-    project_id = "fire-neural-network"
-    subscription_id1 = "goes16-ABI-data-sub-filtered"
-    subscription_id2 = "goes16-GLM-data-sub-filtered"
-
     subscriber1 = pubsub_v1.SubscriberClient()
     subscriber2 = pubsub_v1.SubscriberClient()
-    subscription_path1 = subscriber1.subscription_path(project_id, subscription_id1)
+    subscription_path1 = subscriber1.subscription_path(config.GOOGLE_PROJECT_NAME, config.ABI_SUBSCRIPTION_NAME)
     streaming_pull_future1 = subscriber1.subscribe(subscription_path1, callback=callback_ABI)
-    subscription_path2 = subscriber2.subscription_path(project_id, subscription_id2)
+    subscription_path2 = subscriber2.subscription_path(config.GOOGLE_PROJECT_NAME, config.GLM_SUBSCRIPTION_NAME)
     streaming_pull_future2 = subscriber2.subscribe(subscription_path2, callback=callback_GLM)
     #try: 
     clear_folders()
