@@ -268,15 +268,6 @@ def pipeline():
     root.addHandler(handler)
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-    # Clearning google pub/sub channels because overloading channels causes pipeline shutdown, couldn't get subprocess to work
-    try: 
-        os.system(f"gcloud pubsub subscriptions seek projects/{config.GOOGLE_PROJECT_NAME}/subscriptions/{config.ABI_SUBSCRIPTION_NAME} --time=$(date +%Y-%m-%dT%H:%M:%S)")
-        os.system(f"gcloud pubsub subscriptions seek projects/{config.GOOGLE_PROJECT_NAME}/subscriptions/{config.GLM_SUBSCRIPTION_NAME} --time=$(date +%Y-%m-%dT%H:%M:%S)")
-        logging.info("Cleared ABI and GLM subscriptions of old messages")
-    except:
-        logging.critical("Unable to clear subscriptions\n" + str(misc_functions.error_handling()))
-    print(f"gcloud pubsub subscriptions seek projects/{config.GOOGLE_PROJECT_NAME}/subscriptions/{config.GLM_SUBSCRIPTION_NAME} --time=$(date +%Y-%m-%dT%H:%M:%S)")
-
     # diff_folder, cloud_folder = '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff', '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud'
     # diff_lst, cloud_lst = os.listdir(diff_folder), os.listdir(cloud_folder)
     # diff_lst = sorted(diff_lst, key=misc_functions.key_from_filestring)
@@ -294,7 +285,7 @@ def pipeline():
     streaming_pull_future2 = subscriber2.subscribe(subscription_path2, callback=callback_GLM)
     try: 
         initialize_folders()
-        clear_folders()
+        # clear_folders()
         logging.info("Successfully cleared and initialized folders")
     except:
         logging.critical(f"Unable to clear folders\n" + misc_functions.error_handling())
