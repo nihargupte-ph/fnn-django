@@ -33,32 +33,37 @@
     <div class="container">
         <!-- Featured Project Row-->
         <div class="row align-items-center no-gutters mb-4 mb-lg-5">
-            <div class="col-xl-8 col-lg-7">
+            <div class="col-xl-9 col-lg-7">
             {% comment %} <img class="img-fluid mb-3 mb-lg-0" src="{% static 'assets/img/Google_Maps_Placeholder.jpg' %}" alt="" />{% endcomment %}
-                <style>
-                /* Set the size of the div element that contains the map */
-                #map {
-                    height: 400px;  /* The height is 400 pixels */
-                    width: 100%;  /* The width is the width of the web page */
-                }
-                </style>
-            </head>
+            <style>
+            /* Set the size of the div element that contains the map */
+            #map {
+                height: 600px;  /* The height is 400 pixels */
+                width: 100%;  /* The width is the width of the web page */
+            }
+            </style>
             <body>
-                <h3>My Google Maps Demo</h3>
+                <h3></h3>
                 <!--The div element for the map -->
                 <div id="map"></div>
-                <script>
+
+            <script>
             // Initialize and add the map
             function initMap() {
-            // The location of Uluru
-            var uluru = {lat: -25.344, lng: 131.036};
-            // The map, centered at Uluru
-            var map = new google.maps.Map(
-                document.getElementById('map'), {zoom: 4, center: uluru});
-            // The marker, positioned at Uluru
-            var marker = new google.maps.Marker({position: uluru, map: map});
+
+                // The map, centered at 36.7783, 119.4179
+                var cali_center = {lat: 36.7783, lng: -119.4179}
+                var map = new google.maps.Map(document.getElementById('map'), {zoom: 5, center: cali_center});
+                
+                // Plotting fires
+                {% for fire in queried_fires %}
+                    var js_fire = {lat: {{fire.latitude}}, lng: {{fire.longitude}}};
+                    var marker = new google.maps.Marker({position: js_fire, map: map, url: '/firedetail/{{fire.id}}/' });
+                    google.maps.event.addListener(marker, 'click', function() {window.location.href = this.url;});
+                {% endfor %}
             }
-                </script>
+            </script>
+
                 <!--Load the API from the specified URL
                 * The async attribute allows the browser to render the page while the API loads
                 * The key parameter will contain your own API key (which is not needed for this tutorial)
@@ -69,10 +74,10 @@
                 </script>
             </div>
 
-            <div class="col-xl-4 col-lg-5">
+            <div class="col-xl-3 col-lg-5">
                 <div class="featured-text text-center text-lg-left">
                     <h4>Real-time Fire Google Maps Tracker</h4>
-                    <p class="text-black-50 mb-0">Coming Soon!! </p>
+                    <p class="text-black-50 mb-0"> See fires that were detected by the AI in the last one day. Click on one of the fires to see more details about the particular event.</p>
                 </div>
             </div>
         </div>

@@ -2,6 +2,7 @@ import requests
 import json
 import numpy as np
 import json
+import datetime
 
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect
@@ -24,9 +25,15 @@ class HomeView(TemplateView):
             GOOGLE_MAPS_API = SECRET_CONFIG['GOOGLE_MAPS_API']
 
         # Querying firemodels to find ones that were in the last 5 hours
+        time_filter = datetime.datetime.now() - datetime.timedelta(days=1)
+        queried_fires = FireModel.objects.filter(latest_timestamp__gt=time_filter)
 
-
-        return render(request, self.template_name, {'form':form, 'GOOGLE_MAPS_API':GOOGLE_MAPS_API})
+        context = {
+            'form':form, 
+            'GOOGLE_MAPS_API':GOOGLE_MAPS_API,
+            'queried_fires':queried_fires
+            }
+        return render(request, self.template_name, context)
 
     def post(self, request):
         # Getting token 
