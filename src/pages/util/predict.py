@@ -165,8 +165,7 @@ def predict_xarray(actual_xds_path):
         else:
             logging.info("Successfully predicted xarray")
     except:
-        logging.critical(sys.exc_info()[0])
-        raise Exception("Unable to predict xarray")
+        logging.critical("Unable to predict xarray\n" + str(misc_functions.error_handling()))
 
     basename = os.path.basename(actual_xds_path)
     actual_xds = xarray.open_dataset(actual_xds_path)
