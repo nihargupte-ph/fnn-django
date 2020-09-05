@@ -105,7 +105,7 @@ def normalize_xds(xds, proj="EPSG:4326"):
     i = 0
     while i < 5: 
         try: 
-            loging.info("GOT HERE")
+            logging.info("GOT HERE")
             proj_xds = func_timeout(10, wrapper, args=(xds, proj))
             break
         except FunctionTimedOut:
