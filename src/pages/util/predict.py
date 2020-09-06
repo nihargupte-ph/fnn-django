@@ -107,6 +107,7 @@ def normalize_xds(xds, proj="EPSG:4326"):
         try: 
             logging.info("GOT HERE")
             proj_xds = func_timeout(10, wrapper, args=(xds, proj))
+            logging.info("GOT HERE2")
             break
         except FunctionTimedOut:
             logging.warning(f"Reprojection timed out trying again ({i})")
@@ -114,7 +115,7 @@ def normalize_xds(xds, proj="EPSG:4326"):
             i += 1
     
     if i == 5:
-        logging.critical("Unable to reproject because of TimeOut")
+        logging.critical("Unable to reproject because of TimeOut\n" + str(misc_functions.error_handling()))
         raise TimeoutError
 
     return proj_xds
