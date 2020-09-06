@@ -13,11 +13,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         pipeline.pipeline()
-        send_mail(
-        'Pipeline ended',
-        f'Pipeline ended at {datetime.datetime.now()}',
-        'fireneuralnetwork@gmail.com',
-        ['gupten8@gmail.com'],
-        fail_silently=False,
-        )
+        # send_mail(
+        # 'Pipeline ended',
+        # f'Pipeline ended at {datetime.datetime.now()}',
+        # 'fireneuralnetwork@gmail.com',
+        # ['gupten8@gmail.com'],
+        # fail_silently=False,
+        # )
         print('pipeline ended, email sent to super user')

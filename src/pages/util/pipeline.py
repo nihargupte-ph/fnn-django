@@ -302,7 +302,7 @@ def pipeline():
         streaming_pull_future1.cancel()
         streaming_pull_future2.cancel()
 
-# gcloud beta pubsub subscriptions create goes16-ABI-data-sub-filtered --project fire-neural-network --topic projects/gcp-public-data---goes-16/topics/gcp-public-data-goes-16 --message-filter='hasPrefix(attributes.objectId,"ABI-L1b-RadC/")' --enable-message-ordering --ack-deadline=20 --message-retention-duration=10m
-# gcloud beta pubsub subscriptions create goes16-GLM-data-sub-filtered --project fire-neural-network --topic projects/gcp-public-data---goes-16/topics/gcp-public-data-goes-16 --message-filter='hasPrefix(attributes.objectId,"GLM-L2-LCFA/")' --enable-message-ordering --ack-deadline=20 --message-retention-duration=10m
+# gcloud beta pubsub subscriptions create goes16-ABI-data-sub-filtered --project fire-neural-network --topic projects/gcp-public-data---goes-16/topics/gcp-public-data-goes-16 --message-filter='hasPrefix(attributes.objectId,"ABI-L1b-RadC/")' --enable-message-ordering --ack-deadline=20
+# gcloud beta pubsub subscriptions create goes16-GLM-data-sub-filtered --project fire-neural-network --topic projects/gcp-public-data---goes-16/topics/gcp-public-data-goes-16 --message-filter='hasPrefix(attributes.objectId,"GLM-L2-LCFA/")' --enable-message-ordering --ack-deadline=20
 # gcloud pubsub subscriptions seek projects/fire-neural-network/subscriptions/goes16-ABI-data-sub-filtered --time=$(date +%Y-%m-%dT%H:%M:%S) 
 # gcloud pubsub subscriptions seek projects/fire-neural-network/subscriptions/goes16-GLM-data-sub-filtered --time=$(date +%Y-%m-%dT%H:%M:%S) 
