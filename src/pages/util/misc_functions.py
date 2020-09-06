@@ -487,6 +487,7 @@ def create_FireModel_video(fire):
     """ 
     # Snapping Video
     gif_filepath, folder_path, vmin, vmax = snap_video(fire.longitude, fire.latitude, 20)
+    print(fire.id, folder_path)
     fire.video = gif_filepath
     fire.vmin = vmin
     fire.vmax = vmax
@@ -563,12 +564,12 @@ def cluster_to_FireModel(cluster, diff_xds_path):
 
     xds.close()
 
-    # Sending emails
-    try:
-        call_command('send_emails', lon, lat, avg_timestamp, 'link')
-        logging.info('Sent emails')
-    except:
-        logging.warning('Failed to send emails\n' + str(misc_functions.error_handling()))
+    # # Sending emails NOTE NOTE NOTE NOT SENDING EMAILS FOR NOW
+    # try:
+    #     call_command('send_emails', lon, lat, avg_timestamp, 'link')
+    #     logging.info('Sent emails')
+    # except:
+    #     logging.warning('Failed to send emails\n' + str(error_handling()))
 
     return fire
 
@@ -688,8 +689,8 @@ def update_FireModel_video(fire, diff_xds, radius=20):
     clipped_xds = diff_xds.rio.clip([buffered_point], "EPSG:4326")
     # Plotting
     # We are adding a buffer since the fire may increase more NOTE we might need to increase this number to 2 or something later depending
-    # on how big the fires are 
-    clipped_xds.Rad.plot(ax=ax, cmap=plt.cm.viridis, cbar_kwargs={'label': 'Alarm Level'}, vmin=fire.vmin, vmax=fire.vmax+.5) 
+    # on how big the fires are
+    clipped_xds.Rad.plot(ax=ax, cmap=plt.cm.viridis, cbar_kwargs={'label': 'Alarm Level'}, vmin=fire.vmin, vmax=fire.vmax+.5)
     
     # Formatting plot
     ax.axes.get_xaxis().set_visible(False)
@@ -697,6 +698,7 @@ def update_FireModel_video(fire, diff_xds, radius=20):
     ax.set_title(clipped_xds.t.values)
 
     # Getting new number
+    print(fire.jpg_folder_path, fire.id)
     logging.info(os.listdir(fire.jpg_folder_path))
     new_num = max([int(i.strip('.jpg')) for i in os.listdir(fire.jpg_folder_path)]) + 1
 

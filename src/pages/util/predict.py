@@ -554,8 +554,14 @@ def classify(bandpath_dct):
 
     # Updating the plots and videos of fires detected in the last time_filter 
     for fire in queried_fires:
-        misc_functions.update_FireModel_plots(bandpath_dct['diff'], bandpath_dct['cloud'], fire)
-        misc_functions.update_FireModel_video(fire, xds) 
+        try:
+            misc_functions.update_FireModel_plots(bandpath_dct['diff'], bandpath_dct['cloud'], fire)
+        except:
+            logging.error("Failed to update plots\n" + str(error_handling))
+        try:
+            misc_functions.update_FireModel_video(fire, xds) 
+        except:
+            logging.error("Failed to update video\n" + str(error_handling))
 
     # Unqueried fires we delete the tmp files
     for fire in unqueried_fires:
