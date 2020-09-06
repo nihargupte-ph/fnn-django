@@ -558,11 +558,11 @@ def classify(bandpath_dct):
         try:
             misc_functions.update_FireModel_plots(bandpath_dct['diff'], bandpath_dct['cloud'], fire)
         except:
-            logging.error("Failed to update plots\n" + str(error_handling))
+            logging.error(f"Failed to update plots with id {fire.id}\n" + str(misc_functions.error_handling()))
         try:
             misc_functions.update_FireModel_video(fire, xds) 
         except:
-            logging.error("Failed to update video\n" + str(error_handling))
+            logging.error(f"Failed to update video with id {fire.id}\n" + str(misc_functions.error_handling()))
 
     # Unqueried fires we delete the tmp files
     for fire in unqueried_fires:
