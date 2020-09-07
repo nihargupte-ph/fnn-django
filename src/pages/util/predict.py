@@ -445,6 +445,7 @@ def classify(bandpath_dct):
         anomaly_lst = get_anomalies(bandpath_dct)
         logging.info(f"Got anomalies. {len(anomaly_lst)} anomalies detected")
     except:
+        anomaly_lst = []
         logging.critical(f"Unable to get anomalies\n" + str(misc_functions.error_handling()))
 
     if len(anomaly_lst) == 0:

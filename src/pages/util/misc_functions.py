@@ -170,8 +170,9 @@ def find_oldest_file(folder):
         filepath of oldest file
     """
     file_pair = [(key_from_filestring(filename), filename) for filename in os.listdir(folder)]
-    file_pair = sorted(file_pair, key=lambda x: x[0])
-    return file_pair[1][1]
+    oldest_filename = sorted(file_pair, key=lambda x: x[0])[0][1]
+    filepath = os.path.join(folder, oldest_filename)
+    return filepath
 
 def time_of_file(file_string):
     """ 
