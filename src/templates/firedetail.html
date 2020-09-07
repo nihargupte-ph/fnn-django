@@ -56,7 +56,12 @@ const verticalLinePlugin = {
             context.fillStyle = "#ff0000";
             context.textAlign = 'center';
             context.font = '15px Helvetica';
-            context.fillText('FIRE DETECTED', lineLeftOffset - scale.right, (scale.bottom - scale.top) / 2 + .25*scale.top);    
+            {% if fire_text_pos == 'right' %}
+                context.fillText('FIRE DETECTED', lineLeftOffset + scale.right, (scale.bottom - scale.top) / 2 + .25*scale.top);    
+            {% elif fire_text_pos == 'left' %}
+                context.fillText('FIRE DETECTED', lineLeftOffset - scale.right, (scale.bottom - scale.top) / 2 + .25*scale.top);    
+            {% endif %}
+
         },
 
         afterDatasetsDraw: function (chart, easing) {
@@ -75,6 +80,7 @@ var config = {
         datasets: [
         {
             label: 'Alarm Threshold',
+            lineTension: 0,
             data: [
                 {% for pt in cloud_bound %}
                     {
@@ -96,6 +102,7 @@ var config = {
         },
         {
             label: 'Alarm Level',
+            lineTension: 0,
             data: [
                 {% for pt in diff_pts %}
                     {
@@ -116,6 +123,7 @@ var config = {
         },
         {
             label: 'Predicted Near Infared',
+            lineTension: 0,
             data: [
                 {% for pt in pred_pts %}
                     {
@@ -134,6 +142,7 @@ var config = {
         }, 
         {
             label: 'Actual Near Infared',
+            lineTension: 0,
             data: [
                 {% for pt in actual_7_pts %}
                     {

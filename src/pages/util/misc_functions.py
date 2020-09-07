@@ -698,7 +698,6 @@ def update_FireModel_video(fire, diff_xds, radius=20):
     ax.set_title(clipped_xds.t.values)
 
     # Getting new number
-    print(fire.jpg_folder_path, fire.id)
     logging.info(os.listdir(fire.jpg_folder_path))
     new_num = max([int(i.strip('.jpg')) for i in os.listdir(fire.jpg_folder_path)]) + 1
 

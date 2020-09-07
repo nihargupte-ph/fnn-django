@@ -567,7 +567,10 @@ def classify(bandpath_dct):
     # Unqueried fires we delete the tmp files
     for fire in unqueried_fires:
         if os.path.exists(fire.jpg_folder_path):
-            os.remove(fire.jpg_folder_path)
+            try: 
+                os.remove(fire.jpg_folder_path)
+            except:
+                logging.error("Could not remove jpg folder path for giffing this will result in wasted storage space\n" + str(misc_functions.error_handling()))
 
     # Deleting files now that we have used one "group" of data
     # Removing oldest file in actual, prediction, diff, and cloud array if we have at least 12 files (only band 7)

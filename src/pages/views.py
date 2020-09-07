@@ -124,6 +124,11 @@ def fire_detail_view(request, pk):
     # NOTE The negative one is is weird but it works, the actual timestamp is right but the indicator keeps being 1 off
     fire_start_idx = time_graph_pts.index(min(time_graph_pts, key=lambda x: np.abs(fire.timestamp - x))) - 1
 
+    if fire_start_idx < len(time_graph_pts)/2:
+        fire_text_pos = "right"
+    else:
+        fire_text_pos = "left"
+
     # TODO Lightning plotting not implemented just yet
     if fire.cause == 'lightning':
         lightning_idx = time_graph_pts.index(min(time_graph_pts, key=lambda x: np.abs(fire.lightning_timestamp - x))) - 1
@@ -159,6 +164,7 @@ def fire_detail_view(request, pk):
         'fire_start_idx':fire_start_idx,
         'actual_7_pts': actual_7_graph_pts,
         'lightning_idx':lightning_idx,
+        'fire_text_pos': fire_text_pos,
         }
     return render(request, "firedetail.html", content)
 
