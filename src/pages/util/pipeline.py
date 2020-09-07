@@ -285,8 +285,7 @@ def pipeline():
     streaming_pull_future2 = subscriber2.subscribe(subscription_path2, callback=callback_GLM)
     try: 
         initialize_folders()
-        clear_folders()
-        logging.info("Successfully cleared and initialized folders")
+        logging.info("Initialized folders")
     except:
         logging.critical(f"Unable to clear folders\n" + misc_functions.error_handling())
     logging.info(f"Listening for messages on {subscription_path1} and {subscription_path2}..\n")
