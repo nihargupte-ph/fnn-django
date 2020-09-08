@@ -529,14 +529,6 @@ def classify(bandpath_dct):
             except:
                 logging.error(f"Unable to search for nearby lightning strikes\n" + str(misc_functions.error_handling()))
 
-        # debug
-        # print(fire_lst)
-        # print(queried_fires)
-        # for fire in fire_lst:
-        #     for queried_fire in queried_fires:
-        #         print(f"New fire {fire.id} queried fire {queried_fire.id}\
-        #                 distance {geopy.distance.distance((fire.latitude, fire.longitude), (queried_fire.latitude, queried_fire.longitude))}")
-
             # Recording video after sending emails 
             try:
                 fire = misc_functions.create_FireModel_video(fire)

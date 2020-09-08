@@ -244,7 +244,7 @@ def callback_GLM(message):
 
     # Dealing with cleanup, we don't want any more than the specified number of files in the GLM folder. 
     file_lst = os.listdir(os.path.join(config.NC_DATA_FOLDER, 'GLM'))
-    if len(file_lst) > 100: # this number times 1 minute of data. THIS is how long our search window is
+    if len(file_lst) > 25: # this number times 1 minute of data. THIS is how long our search window is
         oldest_file = min(file_lst, key=lambda x: misc_functions.key_from_filestring(x))
         try:
             os.remove(os.path.join(config.NC_DATA_FOLDER, 'GLM', oldest_file))
