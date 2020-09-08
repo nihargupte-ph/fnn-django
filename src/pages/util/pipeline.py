@@ -286,7 +286,9 @@ def pipeline():
     try: 
         initialize_folders()
         clear_folders()
-        logging.info("Initialized folders")
+        with open(os.path.join(config.MEDIA_FOLDER, 'misc', 'classified_lst.pkl'), 'wb') as f:
+            pickle.dump([], f)
+        logging.info("Initialized folders and cleared classified list")
     except:
         logging.critical(f"Unable to clear folders\n" + misc_functions.error_handling())
     logging.info(f"Listening for messages on {subscription_path1} and {subscription_path2}..\n")
