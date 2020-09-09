@@ -10,6 +10,7 @@ import sys
 from concurrent.futures import TimeoutError
 from google.cloud import pubsub_v1
 import tensorflow as tf
+from google.protobuf.timestamp_pb2 import Timestamp
 
 # Custom Imports
 from pages.util import config
@@ -283,6 +284,15 @@ def pipeline():
     streaming_pull_future1 = subscriber1.subscribe(subscription_path1, callback=callback_ABI)
     subscription_path2 = subscriber2.subscription_path(config.GOOGLE_PROJECT_NAME, config.GLM_SUBSCRIPTION_NAME)
     streaming_pull_future2 = subscriber2.subscribe(subscription_path2, callback=callback_GLM)
+
+    try:
+        timestamp = Timestamp()
+        timestamp.GetCurrentTime()
+        response1 = subscriber1.seek(subscription_path1, time=timestamp)
+        response2 = subscriber2.seek(subscription_path2, time=timestamp)
+    except:
+        logging.critical("Unable to clear subscriptions\n" + str(misc_functions.error_handling()))
+
     try: 
         initialize_folders()
         clear_folders()

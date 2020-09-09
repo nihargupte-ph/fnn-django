@@ -237,7 +237,6 @@ def predict_xarray(actual_xds_path):
     diff_xds.to_netcdf(path=diff_path)
     logging.info(f"Successfully saved difference xarray at {diff_path}")
 
-    
     actual_xds.close()
 
     return diff_path
