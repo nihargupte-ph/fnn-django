@@ -5,6 +5,7 @@ import sys
 import logging
 import time
 import pickle
+import shutil
 
 import geopy.distance
 import geopandas as gpd
@@ -560,7 +561,8 @@ def classify(bandpath_dct):
     for fire in unqueried_fires:
         if os.path.exists(fire.jpg_folder_path):
             try: 
-                os.remove(fire.jpg_folder_path)
+                if fire.jpg_folder_path != None:
+                    shutil.rmtree(fire.jpg_folder_path)
             except:
                 logging.error("Could not remove jpg folder path for giffing this will result in wasted storage space\n" + str(misc_functions.error_handling()))
 
