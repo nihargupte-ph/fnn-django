@@ -8,7 +8,6 @@ src/media/tmp/*
 src/db.sqlite3
 __pycache__
 *.log
-db.sqlite3
 *.pyc
 src/fnn/settings.py
 wsgi.py
