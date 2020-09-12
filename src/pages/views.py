@@ -4,13 +4,14 @@ import numpy as np
 import json
 import datetime
 
+import geopandas as gpd
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect
 from django.views.generic import TemplateView, ListView
 from django.contrib import messages
 
-from .forms import EmailForm, UnsubEmailForm
-from .models import FireModel, EmailModel
+from .forms import UserForm, UnsubForm
+from .models import FireModel, UserModel
 from .util.config import SECRET_CONFIG_PATH
 from .util.misc_functions import binfield_to_obj, dt64_to_datetime, unnan_arr
 
@@ -19,7 +20,7 @@ class HomeView(TemplateView):
     template_name = "home.html"
 
     def get(self, request):
-        form = EmailForm()
+        form = UserForm()
         with open(SECRET_CONFIG_PATH) as config_file:
             SECRET_CONFIG = json.load(config_file)
             GOOGLE_MAPS_API = SECRET_CONFIG['GOOGLE_MAPS_API']
@@ -36,6 +37,12 @@ class HomeView(TemplateView):
         return render(request, self.template_name, context)
 
     def post(self, request):
+        # Loading Secret Keys
+        with open(SECRET_CONFIG_PATH) as config_file:
+            SECRET_CONFIG = json.load(config_file)
+            GOOGLE_MAPS_API = SECRET_CONFIG['GOOGLE_MAPS_API']
+        GOOGLE_MAPS_API = SECRET_CONFIG['GOOGLE_MAPS_API']
+
         # Getting token 
         captcha_token = request.POST.get('g-recaptcha-response')
         cap_url = "https://www.google.com/recaptcha/api/siteverify"
@@ -50,17 +57,46 @@ class HomeView(TemplateView):
             return HttpResponseRedirect("/")
             
 
-
-        form = EmailForm(request.POST)
-        blank_form = EmailForm()
+        form = UserForm(request.POST)
+        blank_form = UserForm()
         if form.is_valid():
-            form.save()
             user_email = form.cleaned_data['email']
+            first_name = form.cleaned_data['first_name']
+            last_name = form.cleaned_data['last_name']
+            address = form.cleaned_data['address']
+            city = form.cleaned_data['city']
+            state = 'CA'
+
+            plus_code = '+'.join(address.split()) + ',' + '+' +  '+'.join(city.split()) + ',' + '+' + state
+            request_url = "https://maps.googleapis.com/maps/api/geocode/json"
+            endpoint = f"{request_url}?address={plus_code}&key={GOOGLE_MAPS_API}"
+            response = requests.get(endpoint)
+            data = response.json()
+            lat = data['results'][0]['geometry']['location']['lat']
+            lon = data['results'][0]['geometry']['location']['lng']
+            address_name = data['results'][0]['formatted_address']
+
+            if address_name == 'California, USA':
+                messages.error(request, f"We could not find your address. Note that we only offer location specific alerts if your address is in California.\
+                    If you do not live in California you can sign up with just your email or alternatively input a California address.\
+                        An example entry is    Address: 1600 Amphitheatre Parkway    City:Mountain View")
+                return render(request, self.template_name, {'form':blank_form, 'invalid':True})
+
+            try:
+                UserModel.objects.create(
+                    email=user_email,
+                    first_name=first_name,
+                    last_name=last_name,
+                    latitude=lat,
+                    longitude=lon,
+                )
+            except: # Repat emails
+                messages.success(request, f"You have already signed up! You will recieve emails at {request.POST['email']} from fireneuralnetwork@gmail.com. Thanks for signing up! ")
+                return render(request, self.template_name, {'form':blank_form, 'invalid':True})
+
             messages.success(request, f"You will recieve emails at {user_email} from fireneuralnetwork@gmail.com. Thanks for signing up! ")
             return render(request, self.template_name, {'form':blank_form, 'user_email':user_email})
-        else:
-            messages.success(request, f"You have already signed up! You will recieve emails at {request.POST['email']} from fireneuralnetwork@gmail.com. Thanks for signing up! ")
-            return render(request, self.template_name, {'form':blank_form, 'invalid':True})
+
 
 
 class FirePageView(ListView):
@@ -74,7 +110,7 @@ class EmailUnsubscribeView(TemplateView):
     template_name = "emailunsub.html"
 
     def get(self, request):
-        form = UnsubEmailForm()
+        form = UnsubForm()
         return render(request, self.template_name, {'form':form})
 
     def post(self, request):
@@ -91,13 +127,13 @@ class EmailUnsubscribeView(TemplateView):
             return_success = False
             return HttpResponseRedirect("/emailunsub")
 
-        form = UnsubEmailForm(request.POST)
-        blank_form = UnsubEmailForm()
+        form = UnsubForm(request.POST)
+        blank_form = UnsubForm()
         if form.is_valid():
             user_email = form.cleaned_data['email']
             try:
                 messages.success(request, f"You will no longer recieve emails from fireneuralnetwork@gmail.com.")
-                email_to_delete = EmailModel.objects.get(email=user_email)
+                email_to_delete = UserModel.objects.get(email=user_email)
                 email_to_delete.delete()
                 return render(request, self.template_name, {'form':blank_form, 'user_email':user_email})
             except:
