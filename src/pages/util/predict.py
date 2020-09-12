@@ -415,6 +415,7 @@ def classify(bandpath_dct):
             flash_lon_lst.append(xds.flash_lon.values)
             flash_lat_lst.append(xds.flash_lat.values)
             flash_time_lst.append(xds.flash_time_offset_of_first_event.values)
+            xds.close()
 
         flash_lon_arr = np.concatenate(flash_lon_lst)
         flash_lat_arr = np.concatenate(flash_lat_lst)
@@ -424,9 +425,10 @@ def classify(bandpath_dct):
         fire_lon = fire.longitude
         fire_lat = fire.latitude
 
-        distance_arr = np.array([misc_functions.haversine(fire_lon, fire_lat, flash_lon, flash_lat) for flash_lon, flash_lat in zip(flash_lon_arr, flash_lat_arr)])
+        distance_arr = np.array([geopy.distance.distance((fire_lat, fire_lon), (flash_lat, flash_lon)).km for flash_lon, flash_lat in zip(flash_lon_arr, flash_lat_arr)])
 
-        if np.argmin(distance_arr) < 10: # km 
+        print(distance_arr[:10])
+        if np.nanmin(distance_arr) < 10: # km 
             lightning_formed = True
             closest_flash_idx = np.argmin(distance_arr)
             flash = (flash_lon_arr[closest_flash_idx], flash_lat_arr[closest_flash_idx], flash_time_arr[closest_flash_idx])
