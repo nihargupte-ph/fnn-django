@@ -67,21 +67,25 @@ class HomeView(TemplateView):
             city = form.cleaned_data['city']
             state = 'CA'
 
-            plus_code = '+'.join(address.split()) + ',' + '+' +  '+'.join(city.split()) + ',' + '+' + state
-            request_url = "https://maps.googleapis.com/maps/api/geocode/json"
-            endpoint = f"{request_url}?address={plus_code}&key={GOOGLE_MAPS_API}"
-            response = requests.get(endpoint)
-            data = response.json()
-            lat = data['results'][0]['geometry']['location']['lat']
-            lon = data['results'][0]['geometry']['location']['lng']
-            address_name = data['results'][0]['formatted_address']
+            if address.strip() == '' and city.strip() == '':
+                lon = None
+                lat = None
+            else:
+                plus_code = '+'.join(address.split()) + ',' + '+' +  '+'.join(city.split()) + ',' + '+' + state
+                request_url = "https://maps.googleapis.com/maps/api/geocode/json"
+                endpoint = f"{request_url}?address={plus_code}&key={GOOGLE_MAPS_API}"
+                response = requests.get(endpoint)
+                data = response.json()
+                address_name = data['results'][0]['formatted_address']
 
-            if address_name == 'California, USA':
-                messages.error(request, f"We could not find your address. Note that we only offer location specific alerts if your address is in California.\
-                    If you do not live in California you can sign up with just your email or alternatively input a California address.\
-                        An example entry is    Address: 1600 Amphitheatre Parkway    City:Mountain View")
-                return render(request, self.template_name, {'form':blank_form, 'invalid':True})
+                if address_name == 'California, USA':
+                    messages.error(request, f"We could not find your address. Note that we only offer location specific alerts if your address is in California.\
+                        If you do not live in California you can sign up with just your email or alternatively input a California address.\
+                            An example entry is    Address: 1600 Amphitheatre Parkway    City:Mountain View")
+                    return render(request, self.template_name, {'form':blank_form, 'invalid':True})
 
+                lat = data['results'][0]['geometry']['location']['lat']
+                lon = data['results'][0]['geometry']['location']['lng']
             try:
                 UserModel.objects.create(
                     email=user_email,
@@ -90,7 +94,7 @@ class HomeView(TemplateView):
                     latitude=lat,
                     longitude=lon,
                 )
-            except: # Repat emails
+            except: # Repeat emails
                 messages.success(request, f"You have already signed up! You will recieve emails at {request.POST['email']} from fireneuralnetwork@gmail.com. Thanks for signing up! ")
                 return render(request, self.template_name, {'form':blank_form, 'invalid':True})
 
