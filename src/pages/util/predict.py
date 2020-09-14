@@ -111,7 +111,7 @@ def normalize_xds(xds, proj="EPSG:4326"):
         try:
             proj_xds = wrapper(xds, 'EPSG:4326')
             break
-        except TimeoutError:
+        except:
             logging.warning(f"reprojection timed out, trying again. Attempt {i+1}")
             i += 1
         
@@ -172,7 +172,7 @@ def predict_xarray(actual_xds_path):
 
     basename = os.path.basename(actual_xds_path)
     actual_xds = xarray.open_dataset(actual_xds_path)
-    
+
     # I would have liked to create a copy with actual_xds.copy() and change only the Rad value. However, when saving with to_netcdf the fire 
     # miraculously changes so for now this is the workaround. A manuel copy. NOTE t is in coords as I couldn't figure out how to make a proper
     # datavar
