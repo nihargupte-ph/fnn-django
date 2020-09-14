@@ -49,6 +49,7 @@ def predict_xds(xds_path, nn):
     for nc_file in filepath_dict[nn.band_of_interest]:
         xds = xarray.open_dataset(nc_file)
         # Clipping to California
+        logging.info("Shape   ", xds.Rad.values.shape, xds.Rad.values.shape)
         arr_lst.append(np.pad(xds.Rad.values, pad_width=2, mode='constant', constant_values=np.nan))
         xds.close()
     padded_arr = np.stack(arr_lst, axis=2)
@@ -282,8 +283,6 @@ def predict_cloud(actual_xds_path, cloud_value=1, num_before=8):
         cloud_xds['Cloud'] = X
     except: 
         logging.warn(f"Cloud assignment error\n" + misc_functions.error_handling())
-        print(filepaths[0], cloud_xds.Rad.values.shape, cloud_xds.x.values.shape, cloud_xds.y.values.shape)
-        print(filepaths[0], cloud_xds.Rad.values.shape, cloud_xds.x.values.shape, cloud_xds.y.values.shape)
         cloud_xds['Cloud'] = np.full([257, 281], None)
     cloud_xds = cloud_xds.drop(['Rad'])
 
