@@ -550,10 +550,12 @@ def classify(bandpath_dct):
     for fire in queried_fires:
         try:
             misc_functions.update_FireModel_plots(bandpath_dct['diff'], bandpath_dct['cloud'], fire)
+            logging.info(f"Updated plot with id {fire.id}")
         except:
             logging.error(f"Failed to update plots with id {fire.id}\n" + str(misc_functions.error_handling()))
         try:
             misc_functions.update_FireModel_video(fire, xds) 
+            logging.info(f"Updated video with id {fire.id}")
         except:
             logging.error(f"Failed to update video with id {fire.id}\n" + str(misc_functions.error_handling()))
 
