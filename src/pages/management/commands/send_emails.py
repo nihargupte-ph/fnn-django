@@ -22,7 +22,9 @@ class Command(BaseCommand):
             Longitude: {lon}\n\
             Latitude:  {lat}\n\
             Timestamp: {options['timestamp']}\n\
-            Unsubscribe: http://127.0.0.1:8000/emailunsub/\n\
+            \n
+            \n
+            If you would like to unsubscribe please go to : www.fireneuralnetwork.com/emailunsub/\n\
             """
 
         shp = geodesic_point_buffer(lat=lat, lon=lon, km=20)

@@ -427,7 +427,6 @@ def classify(bandpath_dct):
 
         distance_arr = np.array([geopy.distance.distance((fire_lat, fire_lon), (flash_lat, flash_lon)).km for flash_lon, flash_lat in zip(flash_lon_arr, flash_lat_arr)])
 
-        print(distance_arr[:10])
         if np.nanmin(distance_arr) < 10: # km 
             lightning_formed = True
             closest_flash_idx = np.argmin(distance_arr)
