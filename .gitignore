@@ -6,8 +6,10 @@ src/tmp/*
 src/pages/util/config.py
 src/media/tmp/*
 src/db.sqlite3
+src/media/misc/*
 __pycache__
 *.log
 *.pyc
 src/fnn/settings.py
 wsgi.py
+testing.py

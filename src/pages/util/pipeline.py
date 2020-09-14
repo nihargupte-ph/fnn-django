@@ -192,7 +192,7 @@ def callback_ABI(message):
 
     # Getting relavent bands 
     band_path = filter_band(message)
-
+    
     if band_path[0] == None:
         message.ack()
         return 
@@ -269,15 +269,6 @@ def pipeline():
     root.addHandler(handler)
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-    # diff_folder, cloud_folder = '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/diff', '/home/n/Documents/Research/fnn-django/src/media/data/ABI_RadC/pred/cloud'
-    # diff_lst, cloud_lst = os.listdir(diff_folder), os.listdir(cloud_folder)
-    # diff_lst = sorted(diff_lst, key=misc_functions.key_from_filestring)
-    # for diff_file in diff_lst:
-    #     import xarray
-    #     xds = xarray.open_dataset(os.path.join(diff_folder, diff_file))
-    #     print(f'tstart  {xds.t.values}')
-    #     callback_ABI(os.path.join(diff_folder, diff_file))
-
     subscriber1 = pubsub_v1.SubscriberClient()
     subscriber2 = pubsub_v1.SubscriberClient()
     subscription_path1 = subscriber1.subscription_path(config.GOOGLE_PROJECT_NAME, config.ABI_SUBSCRIPTION_NAME)
@@ -290,6 +281,7 @@ def pipeline():
         timestamp.GetCurrentTime()
         response1 = subscriber1.seek(subscription_path1, time=timestamp)
         response2 = subscriber2.seek(subscription_path2, time=timestamp)
+        logging.info("Successfully cleared old messages")
     except:
         logging.critical("Unable to clear subscriptions\n" + str(misc_functions.error_handling()))
 

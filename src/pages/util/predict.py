@@ -16,7 +16,7 @@ from sklearn.cluster import DBSCAN
 import xarray
 from django.core.management import call_command
 from django.core import management
-from func_timeout import func_timeout, FunctionTimedOut
+import timeout_decorator
 
 from pages.util import config 
 from pages.util import misc_functions
@@ -99,21 +99,21 @@ def normalize_xds(xds, proj="EPSG:4326"):
     xds = xds[["Rad", "DQF"]]
     
     # Sometimes this function times out
+    @timeout_decorator.timeout(10, use_signals=False)
     def wrapper(xds, proj):
         proj_xds = xds.rio.reproject(proj)
         return proj_xds
 
+    # NOTE maybe we can also try purely multiprocessing and just getting the first one that returns
     i = 0
-    while i < 5: 
-        try: 
-            logging.info("GOT HERE")
-            proj_xds = func_timeout(100, wrapper, args=(xds, proj))
-            logging.info("GOT HERE2")
+    while i < 5:
+        try:
+            proj_xds = wrapper(xds, 'EPSG:4326')
             break
-        except FunctionTimedOut:
-            logging.warning(f"Reprojection timed out trying again ({i})")
-            proj_xds = func_timeout(100, wrapper, args=(xds, proj))
+        except TimeoutError:
+            logging.warning(f"reprojection timed out, trying again. Attempt {i+1}")
             i += 1
+        
     
     if i == 5:
         logging.critical("Unable to reproject because of TimeOut\n" + str(misc_functions.error_handling()))

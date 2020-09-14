@@ -41,12 +41,16 @@ class HomeView(TemplateView):
         with open(SECRET_CONFIG_PATH) as config_file:
             SECRET_CONFIG = json.load(config_file)
             GOOGLE_MAPS_API = SECRET_CONFIG['GOOGLE_MAPS_API']
+            GOOGLE_CAPTCHA_KEY = SECRET_CONFIG['GOOGLE_CAPTCHA_KEY']
         GOOGLE_MAPS_API = SECRET_CONFIG['GOOGLE_MAPS_API']
+
+        # Blank forms
+        blank_form = UserForm()
 
         # Getting token 
         captcha_token = request.POST.get('g-recaptcha-response')
         cap_url = "https://www.google.com/recaptcha/api/siteverify"
-        cap_secret = "6LeOJ7oZAAAAAOBUuZo2wiskY0Ut-sxG83Wa4PUJ"
+        cap_secret = GOOGLE_CAPTCHA_KEY
         cap_data = {'secret':cap_secret, 'response':captcha_token}
         # Sending request to google API to verify tokens
         cap_server_response = requests.post(url=cap_url, data=cap_data)
@@ -54,11 +58,10 @@ class HomeView(TemplateView):
         if cap_json['success'] == False:
             messages.error(request, "Invalid Captcha Try Again")
             return_success = False
-            return HttpResponseRedirect("/")
+            return render(request, self.template_name, {'form':blank_form, 'invalid':True})
             
 
         form = UserForm(request.POST)
-        blank_form = UserForm()
         if form.is_valid():
             user_email = form.cleaned_data['email']
             first_name = form.cleaned_data['first_name']

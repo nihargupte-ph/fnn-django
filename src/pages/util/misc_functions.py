@@ -488,7 +488,6 @@ def create_FireModel_video(fire):
     """ 
     # Snapping Video
     gif_filepath, folder_path, vmin, vmax = snap_video(fire.longitude, fire.latitude, 20)
-    print(fire.id, folder_path)
     fire.video = gif_filepath
     fire.vmin = vmin
     fire.vmax = vmax
