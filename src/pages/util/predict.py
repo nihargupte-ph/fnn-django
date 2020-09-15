@@ -547,6 +547,7 @@ def classify(bandpath_dct):
         pickle.dump(classified_lst, f)
 
     # Updating the plots and videos of fires detected in the last time_filter 
+    logging.info(queried_fires)
     for fire in queried_fires:
         try:
             misc_functions.update_FireModel_plots(bandpath_dct['diff'], bandpath_dct['cloud'], fire)
