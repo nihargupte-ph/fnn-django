@@ -287,7 +287,7 @@ def pipeline():
 
     try: 
         initialize_folders()
-        # clear_folders()
+        clear_folders()
         with open(os.path.join(config.MEDIA_FOLDER, 'misc', 'classified_lst.pkl'), 'wb') as f:
             pickle.dump([], f)
         logging.info("Initialized folders and cleared classified list")

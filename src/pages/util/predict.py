@@ -49,7 +49,7 @@ def predict_xds(xds_path, nn):
     for nc_file in filepath_dict[nn.band_of_interest]:
         xds = xarray.open_dataset(nc_file)
         # Clipping to California
-        logging.info("Shape   ", xds.Rad.values.shape, xds.Rad.values.shape)
+        logging.info(f"Shape   {xds.Rad.values.shape}")
         arr_lst.append(np.pad(xds.Rad.values, pad_width=2, mode='constant', constant_values=np.nan))
         xds.close()
     padded_arr = np.stack(arr_lst, axis=2)
@@ -553,19 +553,18 @@ def classify(bandpath_dct):
             logging.info(f"Updated plot with id {fire.id}")
         except:
             logging.error(f"Failed to update plots with id {fire.id}\n" + str(misc_functions.error_handling()))
-        try:
-            misc_functions.update_FireModel_video(fire, xds) 
-            logging.info(f"Updated video with id {fire.id}")
-        except:
-            logging.error(f"Failed to update video with id {fire.id}\n" + str(misc_functions.error_handling()))
+        # try:
+        #     misc_functions.update_FireModel_video(fire, xds) 
+        #     logging.info(f"Updated video with id {fire.id}")
+        # except:
+        #     logging.error(f"Failed to update video with id {fire.id}\n" + str(misc_functions.error_handling()))
 
     # Unqueried fires we delete the tmp files
     for fire in unqueried_fires:
         if fire.jpg_folder_path != None:
             if os.path.exists(fire.jpg_folder_path):
                 try: 
-
-                        shutil.rmtree(fire.jpg_folder_path)
+                    shutil.rmtree(fire.jpg_folder_path)
                 except:
                     logging.error("Could not remove jpg folder path for giffing this will result in wasted storage space\n" + str(misc_functions.error_handling()))
 

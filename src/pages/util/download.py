@@ -6,6 +6,7 @@ import sys
 
 # Custom imports
 from pages.util import config 
+from pages.util import misc_functions
 from pages.util.predict import clip_xds_cali, normalize_xds
 
 
@@ -59,9 +60,9 @@ def download_preproc_ABI(objectId):
     try: 
         filepath = copy_fromgcs("gcp-public-data-goes-16", objectId, os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', f"band_{band_id}"))
         logging.info(f"Successfully downloaded {objectId} from goes-16 ABI_RadC bucket")
-    except Exception as e:
-        logging.warn(f"file with objectId:{objectId} was not able to be downloaded " + str(e))
-        return None
+    except:
+        logging.critical(f"File with objectId:{objectId} was not able to be Downloaded\n" + str(misc_functions.error_handling()))
+        raise Exception
 
     # Normalize
     try:
@@ -69,9 +70,9 @@ def download_preproc_ABI(objectId):
         xds_copy = xds.copy()
         xds_copy = normalize_xds(xds_copy)
         logging.info(f"Normalized {objectId}")
-    except Exception as e:
-        logging.warn(f"file with objectId:{objectId} was not able to be normalized. Deleting and continuing... " + str(e))
-        return None
+    except:
+        logging.critical(f"File with objectId:{objectId} was not able to be Normalized\n" + str(misc_functions.error_handling()))
+        raise Exception
 
     # Clip
     try:
@@ -80,9 +81,9 @@ def download_preproc_ABI(objectId):
         os.remove(filepath)
         clipped_xds.to_netcdf(path=filepath, mode='w')
         logging.info(f"Clipped {objectId}")
-    except Exception as e: 
-        logging.warn(f"file with objectId:{objectId} was not able to be clipped. Deleting and continuing... " + str(e))
-        return None
+    except: 
+        logging.critical(f"File with objectId:{objectId} was not able to be Clipped\n" + str(misc_functions.error_handling()))
+        raise Exception
 
     clipped_xds.close()
     xds.close()
