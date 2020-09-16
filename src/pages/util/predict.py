@@ -243,7 +243,7 @@ def predict_xarray(actual_xds_path):
 
     return diff_path
         
-def predict_cloud(actual_xds_path, cloud_value=1, num_before=8):
+def predict_cloud(actual_xds_path, cloud_value=1, num_before=10):
     """ 
     Parameters
     ----------
@@ -325,7 +325,7 @@ def classify(bandpath_dct):
         diff_xds = xarray.open_dataset(diff_xds_path)
         cloud_xds = xarray.open_dataset(cloud_xds_path)
 
-        cloud_conf, non_cloud_conf = .55, .17
+        cloud_conf, non_cloud_conf = .65, .17
         cloud_conf = np.full([diff_xds.Rad.values.shape[0], diff_xds.Rad.values.shape[1]], cloud_conf)
         non_cloud_conf = np.full([diff_xds.Rad.values.shape[0], diff_xds.Rad.values.shape[1]], non_cloud_conf)
 
