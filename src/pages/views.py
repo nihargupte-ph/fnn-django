@@ -70,7 +70,7 @@ class HomeView(TemplateView):
             city = form.cleaned_data['city']
             state = 'CA'
 
-            if address.strip() == '' and city.strip() == '':
+            if address.strip() == '' and city.strip().lower() == 'everywhere':
                 lon = None
                 lat = None
             else:
