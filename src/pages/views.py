@@ -98,8 +98,44 @@ class HomeView(TemplateView):
                     longitude=lon,
                 )
             except: # Repeat emails
-                messages.success(request, f"You have already signed up! You will recieve emails at {request.POST['email']} from fireneuralnetwork@gmail.com. Thanks for signing up! ")
-                return render(request, self.template_name, {'form':blank_form, 'invalid':True})
+                # If they change thier user settings
+                user = UserModel.objects.get(email=user_email)
+
+
+                # If the user changed to everywhere
+                if (lat == None and lon == None) and (user.latitude == None and user.longitude == None):
+                    lonlat_change = False
+                elif (lat == None and lon == None) and (user.latitude != None and user.longitude != None):
+                    lonlat_change = True
+                # If the user inputted a location but before it was everywhere
+                elif (lat != None and lon != None) and (user.latitude == None and user.longitude == None):
+                    lonlat_change = True
+                # If the user's location changed by a certain amount
+                elif np.abs(lat - user.latitude) > .001 or np.abs(lon - user.longitude) > .001:
+                    lonlat_change = True
+                else:
+                    lonlat_change = False
+
+
+                if first_name != user.first_name or last_name != user.last_name or lonlat_change:
+                    # Updating record
+                    if first_name != user.first_name:
+                        user.first_name = first_name
+                    if last_name != user.last_name:
+                        user.last_name = last_name
+
+                    if lonlat_change:
+                        user.longitude = lon
+                        user.latitude = lat
+                    user.save()
+
+                    print(user.first_name, user.last_name, user.longitude, user.latitude)
+
+                    messages.success(request, f"You have already signed up with {user_email}! But we noticed your location and/or name has changed. We have updated it in our system. Thanks for signing up! ")
+                    return render(request, self.template_name, {'form':blank_form, 'user_email':user_email})
+                else:
+                    messages.success(request, f"You have already signed up! You will recieve emails at {request.POST['email']} from fireneuralnetwork@gmail.com. Thanks for signing up! ")
+                    return render(request, self.template_name, {'form':blank_form, 'invalid':True})
 
             messages.success(request, f"You will recieve emails at {user_email} from fireneuralnetwork@gmail.com. Thanks for signing up! ")
             return render(request, self.template_name, {'form':blank_form, 'user_email':user_email})

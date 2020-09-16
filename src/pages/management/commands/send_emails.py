@@ -38,12 +38,13 @@ class Command(BaseCommand):
         queried_location_users = UserModel.objects.filter(longitude__lt=max_lon, longitude__gt=min_lon, latitude__lt=max_lat, latitude__gt=min_lat)
         no_location_users = UserModel.objects.filter(latitude__isnull=True, longitude__isnull=True)
         queried_users = list(itertools.chain(queried_location_users, no_location_users))
+        print(queried_users[0].email)
 
         email_lst = [email_model.email for email_model in queried_users]
         message = EmailMessage(
             subject='New fire detected',
             body=msg, 
-            from_email='fireneuralnetwork@gmail.com',
+            from_email='info@fireneuralnetwork.com',
             bcc=email_lst
         )
         message.send()
