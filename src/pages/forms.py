@@ -43,6 +43,19 @@ class UserForm(forms.Form):
             }
         ),
     )
+    city = forms.CharField(
+        required=True,
+        label='',
+        widget=forms.TextInput(
+            attrs={
+            'class':"form-control flex-fill mr-0 mr-sm-2 mb-3 mb-sm-0",
+            'id':"input_city",
+            'type':"text",
+            'name':"city",
+            'placeholder':"City (if you want to recieve all updates enter \"everywhere\")"
+            }
+        ),
+    )
     address = forms.CharField(
         required=False,
         label='',
@@ -52,20 +65,7 @@ class UserForm(forms.Form):
             'id':"input_address",
             'type':"text",
             'name':"address",
-            'placeholder':"Address (optional, you will recieve emails if fires are within 20km of your address)"
-            }
-        ),
-    )
-    city = forms.CharField(
-        required=False,
-        label='',
-        widget=forms.TextInput(
-            attrs={
-            'class':"form-control flex-fill mr-0 mr-sm-2 mb-3 mb-sm-0",
-            'id':"input_city",
-            'type':"text",
-            'name':"city",
-            'placeholder':"City (optional)"
+            'placeholder':"Address (optional, you will recieve emails if fires are within 20mi (32 km) of your address)"
             }
         ),
     )

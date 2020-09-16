@@ -27,7 +27,7 @@ class Command(BaseCommand):
             If you would like to unsubscribe please go to : www.fireneuralnetwork.com/emailunsub/\n\
             """
 
-        shp = geodesic_point_buffer(lat=lat, lon=lon, km=20)
+        shp = geodesic_point_buffer(lat=lat, lon=lon, km=32)
         shp = shp['coordinates'][0]
 
         min_lon = min([i[0] for i in shp])
