@@ -46,12 +46,24 @@ def predict_xds(xds_path, nn):
         return 'wait'
 
     arr_lst = []
+    bad_arr_count = 0
     for nc_file in filepath_dict[nn.band_of_interest]:
         xds = xarray.open_dataset(nc_file)
         # Clipping to California
         logging.info(f"Shape   {xds.Rad.values.shape}")
+        if xds.Rad.values.shape[0] != 257 or xds.Rad.values.shape[1] != 281:
+            bad_arr_count += 1
+            continue
         arr_lst.append(np.pad(xds.Rad.values, pad_width=2, mode='constant', constant_values=np.nan))
         xds.close()
+    
+    if len(arr_lst) == 0:
+        logging.critical("Cannot predict xarray since previous 4 measurements are not normalized correctly" + str(misc_functions.error_handling()))
+        raise Exception
+    elif bad_arr_count != 0:
+        for i in range(bad_arr_count):
+            arr_lst.append(arr_lst[i])
+
     padded_arr = np.stack(arr_lst, axis=2)
 
     # We just need the properties, the long and lat will be completely different
@@ -547,7 +559,6 @@ def classify(bandpath_dct):
         pickle.dump(classified_lst, f)
 
     # Updating the plots and videos of fires detected in the last time_filter 
-    logging.info(queried_fires)
     for fire in queried_fires:
         try:
             misc_functions.update_FireModel_plots(bandpath_dct['diff'], bandpath_dct['cloud'], fire)

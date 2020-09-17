@@ -129,8 +129,6 @@ class HomeView(TemplateView):
                         user.latitude = lat
                     user.save()
 
-                    print(user.first_name, user.last_name, user.longitude, user.latitude)
-
                     messages.success(request, f"You have already signed up with {user_email}! But we noticed your location and/or name has changed. We have updated it in our system. Thanks for signing up! ")
                     return render(request, self.template_name, {'form':blank_form, 'user_email':user_email})
                 else:

@@ -133,14 +133,15 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST_USER =  'fireneuralnetwork@gmail.com'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_PASSWORD = 'p#&gq3HiD99J'
+EMAIL_USE_SSL = True
+EMAIL_HOST = 'mail.privateemail.com'
+EMAIL_HOST_USER = 'info@fireneuralnetwork.com'
+EMAIL_HOST_PASSWORD = 'Fire2021Tuz'
+EMAIL_PORT = 465
 
-# Message edits
-from django.contrib.messages import constants as messages
-MESSAGE_TAGS = {
-    messages.ERROR: 'danger',
-}
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST_USER =  'fireneuralnetwork@gmail.com'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_PASSWORD = 'p#&gq3HiD99J'

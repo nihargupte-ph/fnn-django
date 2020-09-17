@@ -18,13 +18,14 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         lon = options['lon']
         lat = options['lat']
-        msg = f"""  \
-            Longitude: {lon}\n\
-            Latitude:  {lat}\n\
-            Timestamp: {options['timestamp']}\n\
-            \n
-            \n
-            If you would like to unsubscribe please go to : www.fireneuralnetwork.com/emailunsub/\n\
+        msg = f"""
+            
+            Longitude: {lon}
+            Latitude:  {lat}
+            Timestamp: {options['timestamp']}
+
+            
+            If you would like to unsubscribe please go to : www.fireneuralnetwork.com/emailunsub/
             """
 
         shp = geodesic_point_buffer(lat=lat, lon=lon, km=32)
@@ -38,7 +39,6 @@ class Command(BaseCommand):
         queried_location_users = UserModel.objects.filter(longitude__lt=max_lon, longitude__gt=min_lon, latitude__lt=max_lat, latitude__gt=min_lat)
         no_location_users = UserModel.objects.filter(latitude__isnull=True, longitude__isnull=True)
         queried_users = list(itertools.chain(queried_location_users, no_location_users))
-        print(queried_users[0].email)
 
         email_lst = [email_model.email for email_model in queried_users]
         message = EmailMessage(
