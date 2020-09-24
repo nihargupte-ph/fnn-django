@@ -69,7 +69,29 @@ class UserForm(forms.Form):
             }
         ),
     )
-
+    # recieve_all = forms.BooleanField(
+    #     required=False,
+    #     label='Check this box to recieve updates everywhere. ',
+    #     widget=forms.CheckboxInput(
+    #         attrs={
+    #             'name':'recieve all',
+    #             'color':'#ffffff'
+    #         }
+    #     )
+    # )
+    # terms_agree = forms.BooleanField(
+    #     required=True,
+    #     label='''Except for loss or damages caused through gross negligence or intent, the Parties shall have no liability to each other hereunder. 
+    #     It is understood by both parties that the Fire Neural Network (FNN) service is intended for informational purposes only, 
+    #     it shall not be used as the only tool by emergency response services, and the Fire Neural Network Group assumes no liability arising from 
+    #     the use of FNN. Check this box to indicate you agree''',
+    #     widget=forms.CheckboxInput(
+    #         attrs={
+    #             'name':'terms and service',
+    #             'color':'#ffffff',
+    #         }
+    #     )
+    # )
 
 class UnsubForm(forms.Form):
     email = forms.EmailField(
