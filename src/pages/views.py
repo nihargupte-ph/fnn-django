@@ -132,10 +132,10 @@ class HomeView(TemplateView):
                     messages.success(request, f"You have already signed up with {user_email}! But we noticed your location and/or name has changed. We have updated it in our system. Thanks for signing up! ")
                     return render(request, self.template_name, {'form':blank_form, 'user_email':user_email})
                 else:
-                    messages.success(request, f"You have already signed up! You will recieve emails at {request.POST['email']} from fireneuralnetwork@gmail.com. Thanks for signing up! ")
+                    messages.success(request, f"You have already signed up! You will recieve emails at {request.POST['email']} from info@fireneuralnetwork.com. Thanks for signing up! ")
                     return render(request, self.template_name, {'form':blank_form, 'invalid':True})
 
-            messages.success(request, f"You will recieve emails at {user_email} from fireneuralnetwork@gmail.com. Thanks for signing up! ")
+            messages.success(request, f"You will recieve emails at {user_email} from info@fireneuralnetwork.com. Thanks for signing up! ")
             return render(request, self.template_name, {'form':blank_form, 'user_email':user_email})
 
 class FirePageView(ListView):
@@ -181,7 +181,7 @@ class EmailUnsubscribeView(TemplateView):
         if form.is_valid():
             user_email = form.cleaned_data['email']
             try:
-                messages.success(request, f"You will no longer recieve emails from fireneuralnetwork@gmail.com.")
+                messages.success(request, f"You will no longer recieve emails from info@fireneuralnetwork.com.")
                 email_to_delete = UserModel.objects.get(email=user_email)
                 email_to_delete.delete()
                 return render(request, self.template_name, {'form':blank_form, 'user_email':user_email})
