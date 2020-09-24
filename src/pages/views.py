@@ -138,8 +138,6 @@ class HomeView(TemplateView):
             messages.success(request, f"You will recieve emails at {user_email} from fireneuralnetwork@gmail.com. Thanks for signing up! ")
             return render(request, self.template_name, {'form':blank_form, 'user_email':user_email})
 
-
-
 class FirePageView(ListView):
     model = FireModel
     template_name = 'firepage.html'
@@ -222,7 +220,7 @@ def fire_detail_view(request, pk):
     else:
         lightning_idx = None
     
-    # Formatting time to be displayed in javascript new Date form
+    # Converting to PST
     time_graph_pts = [d.strftime('%Y-%m-%d %H:%M') for d in time_graph_pts]
     
     # Creating changing bound based on cloud and non-cloud
