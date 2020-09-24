@@ -192,7 +192,19 @@ class EmailUnsubscribeView(TemplateView):
             messages.success(request, "Invalid email")
             return render(request, self.template_name, {'form':blank_form, 'invalid':True})
 
+class BrochureView(TemplateView):
+    template_name = "brochure.html"
+
+    def get(self, request):
+        return render(request, self.template_name)
+
+
 def fire_detail_view(request, pk):
+    # Loading Secret Keys
+    with open(SECRET_CONFIG_PATH) as config_file:
+        SECRET_CONFIG = json.load(config_file)
+        GOOGLE_MAPS_API = SECRET_CONFIG['GOOGLE_MAPS_API']
+
     fire = FireModel.objects.get(id=pk)
     time_graph_pts = binfield_to_obj(fire.time_graph_pts)
     pred_graph_pts = binfield_to_obj(fire.pred_graph_pts)
@@ -250,6 +262,7 @@ def fire_detail_view(request, pk):
         'actual_7_pts': actual_7_graph_pts,
         'lightning_idx':lightning_idx,
         'fire_text_pos': fire_text_pos,
+        'GOOGLE_MAPS_API':GOOGLE_MAPS_API,
         }
     return render(request, "firedetail.html", content)
 

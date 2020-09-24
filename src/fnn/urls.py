@@ -18,13 +18,14 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 
-from pages.views import HomeView, how_it_works_view, fire_detail_view, EmailUnsubscribeView, FirePageView
+from pages.views import HomeView, how_it_works_view, fire_detail_view, EmailUnsubscribeView, FirePageView, BrochureView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', HomeView.as_view(), name="home"),
     # path('howitworks/', how_it_works_view),
     path('firepage/', FirePageView.as_view(), name='firepage'),
+    path('brochure/', BrochureView.as_view(), name='brochure'),
     path('firedetail/<int:pk>/', fire_detail_view),
     path('emailunsub/', EmailUnsubscribeView.as_view(), name='emailunsub'),
 ] 
