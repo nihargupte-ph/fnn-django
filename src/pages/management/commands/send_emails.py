@@ -13,16 +13,20 @@ class Command(BaseCommand):
         parser.add_argument('lon', type=float)
         parser.add_argument('lat', type=float)
         parser.add_argument('timestamp', type=str)
-        parser.add_argument('link', type=str)
+        parser.add_argument('fire_id', type=str)
 
     def handle(self, *args, **options):
-        lon = options['lon']
-        lat = options['lat']
+        lon = round(options['lon'], 9)
+        lat = round(options['lat'], 9)
+        time = f"{options['timestamp']} US/Pacific"
+        link = f"www.fireneuralnetwork.com/firedetail/{options['fire_id']}"
+
         msg = f"""
             
             Longitude: {lon}
             Latitude:  {lat}
-            Timestamp: {options['timestamp']}
+            Timestamp: {time}
+            Fire Details Link: {link}
 
             
             If you would like to unsubscribe please go to : www.fireneuralnetwork.com/emailunsub/

@@ -564,10 +564,13 @@ def cluster_to_FireModel(cluster, diff_xds_path):
 
     xds.close()
 
-    # Sending emails NOTE NOTE NOTE NOT SENDING EMAILS FOR NOW
     try:
-        call_command('send_emails', lon, lat, avg_timestamp, 'link')
-        logging.info('Sent emails')
+        # converting timestamp to US/Pacific 
+        tz = pytz.timezone('US/Pacific')
+        local_dt = avg_timestamp.astimezone(tz)
+        time_str = local_dt.strftime("%b %e, %Y, %I:%M %p")
+        call_command('send_emails', lon, lat, time_str, fire.id)
+        logging.info('Sent Emails')
     except:
         logging.warning('Failed to send emails\n' + str(error_handling()))
 
