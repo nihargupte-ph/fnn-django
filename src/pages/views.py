@@ -65,8 +65,9 @@ class HomeView(TemplateView):
         if form.is_valid():
             # Checking if they signed the terms and conditions
             terms_bool = request.POST.get('terms')
+            print(terms_bool)
             if terms_bool != 'on': 
-                messages.error(request, "Please read and check the terms and conditions box below")
+                messages.error(request, "Please read and check the terms and conditions and privacy policy box below")
                 return render(request, self.template_name, {'form':blank_form, 'invalid':True})
 
             user_email = form.cleaned_data['email']
@@ -77,13 +78,13 @@ class HomeView(TemplateView):
             state = 'CA'
 
             everywhere_bool = request.POST.get('recieve-all')
-            if everywhere_bool == 'on':
-                lon = None
-                lat = None
-            elif address.strip() == '' and city.strip().lower() == '' and not everywhere_bool == 'on':
+            if len(address.strip()) == 0 and len(city.strip().lower()) == 0 and everywhere_bool == 'on':
                 messages.error(request, f"You indicated that you only wanted updates 20 mi from your address but did not provide an address!\
                     Please re-enter your information along with address if you want to recieve location specific updates.")
                 return render(request, self.template_name, {'form':blank_form, 'invalid':True})
+            elif everywhere_bool == 'on':
+                lon = None
+                lat = None
             else:
                 plus_code = '+'.join(address.split()) + ',' + '+' +  '+'.join(city.split()) + ',' + '+' + state
                 request_url = "https://maps.googleapis.com/maps/api/geocode/json"
@@ -148,6 +149,9 @@ class HomeView(TemplateView):
 
             messages.success(request, f"You will recieve emails at {user_email} from info@fireneuralnetwork.com. Thanks for signing up! ")
             return render(request, self.template_name, {'form':blank_form, 'user_email':user_email})
+        else:
+            messages.success(request, f"Invalid information, please try again")
+            return render(request, self.template_name, {'form':blank_form})
 
 class FirePageView(ListView):
     model = FireModel
