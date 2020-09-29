@@ -143,15 +143,14 @@
                     <div class="form-group ">
                         {% csrf_token %}
                         {{ form.as_p }}
-                        <p>
-                            <label for="recieve-all" style='color:white'> Check this box to only recieve updates if fires are within 20mi (32 km) of your address. If you do not check this box you will recieve updates if there is a fire anywhere in California.  </label>
-                            <input type="checkbox" label="recieve-all" name="recieve-all">
-                        </p>
-                        <p>
-                            <label for="terms" style='color:white'> Check this box if you read and agree with the <a href="terms/">terms and conditions</a> and <a href="privacypolicy/">privacy policy</a> </label>
-                            <input type="checkbox" label="terms" name="terms">
-                        </p>
-                    </div>
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input" id="recieve-all" name="recieve-all" label="recieve-all">
+                            <label class="custom-control-label" for="recieve-all" style='color:white; margin-bottom:50px'>Check this box to only recieve updates if fires are within 20mi (32 km) of your address. If you do not check this box you will recieve updates if there is a fire anywhere in California.</label>
+                        </div>
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input" id="terms" label="terms" name="terms">
+                            <label class="custom-control-label" for="terms" style='color:white; margin-bottom:50px'> Check this box if you read and agree with the <a href="terms/">terms and conditions</a> and <a href="privacypolicy/">privacy policy</a> </label>
+                        </div>
                     <div style="text-align: center;">
                         <div class="g-recaptcha" style="display: inline-block;" data-sitekey="6Ld_wssZAAAAACkVFJ5CViYB0KeesbWJ2OcW76FB"></div>
                     </div>
