@@ -62,7 +62,7 @@ def download_preproc_ABI(objectId):
         logging.info(f"Successfully downloaded {objectId} from goes-16 ABI_RadC bucket")
     except:
         logging.critical(f"File with objectId:{objectId} was not able to be Downloaded\n" + str(misc_functions.error_handling()))
-        raise Exception
+        sys.exit(1)
 
     # Normalize
     try:
