@@ -63,6 +63,12 @@ class HomeView(TemplateView):
 
         form = UserForm(request.POST)
         if form.is_valid():
+            # Checking if they signed the terms and conditions
+            terms_bool = request.POST.get('terms')
+            if terms_bool != 'on': 
+                messages.error(request, "Please read and check the terms and conditions box below")
+                return render(request, self.template_name, {'form':blank_form, 'invalid':True})
+
             user_email = form.cleaned_data['email']
             first_name = form.cleaned_data['first_name']
             last_name = form.cleaned_data['last_name']
@@ -70,9 +76,14 @@ class HomeView(TemplateView):
             city = form.cleaned_data['city']
             state = 'CA'
 
-            if address.strip() == '' and city.strip().lower() == 'everywhere':
+            everywhere_bool = request.POST.get('recieve-all')
+            if everywhere_bool == 'on':
                 lon = None
                 lat = None
+            elif address.strip() == '' and city.strip().lower() == '' and not everywhere_bool == 'on':
+                messages.error(request, f"You indicated that you only wanted updates 20 mi from your address but did not provide an address!\
+                    Please re-enter your information along with address if you want to recieve location specific updates.")
+                return render(request, self.template_name, {'form':blank_form, 'invalid':True})
             else:
                 plus_code = '+'.join(address.split()) + ',' + '+' +  '+'.join(city.split()) + ',' + '+' + state
                 request_url = "https://maps.googleapis.com/maps/api/geocode/json"
@@ -198,7 +209,6 @@ class BrochureView(TemplateView):
     def get(self, request):
         return render(request, self.template_name)
 
-
 def fire_detail_view(request, pk):
     # Loading Secret Keys
     with open(SECRET_CONFIG_PATH) as config_file:
@@ -269,3 +279,11 @@ def fire_detail_view(request, pk):
 def how_it_works_view(request):
     context = {}
     return render(request, "howitworks.html", context)
+
+def terms_and_conditions_view(request):
+    context = {}
+    return render(request, "termsandconditions.html", context)
+
+def privacy_policy_view(request):
+    context = {}
+    return render(request, "privacypolicy.html", context)
