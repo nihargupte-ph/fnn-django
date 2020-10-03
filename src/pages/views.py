@@ -1,6 +1,7 @@
 import requests
 import json
 import numpy as np
+import pytz
 import json
 import datetime
 
@@ -65,7 +66,6 @@ class HomeView(TemplateView):
         if form.is_valid():
             # Checking if they signed the terms and conditions
             terms_bool = request.POST.get('terms')
-            print(terms_bool)
             if terms_bool != 'on': 
                 messages.error(request, "Please read and check the terms and conditions and privacy policy box below")
                 return render(request, self.template_name, {'form':blank_form, 'invalid':True})
@@ -247,7 +247,7 @@ def fire_detail_view(request, pk):
         lightning_idx = None
     
     # Converting to PST
-    time_graph_pts = [d.strftime('%Y-%m-%d %H:%M') for d in time_graph_pts]
+    time_graph_pts = [d.astimezone(pytz.timezone('US/Pacific')).strftime('%Y-%m-%d %H:%M') for d in time_graph_pts]
 
     # Creating changing bound based on cloud and non-cloud
     cloud_bound = [.17 if pt else .55 for pt in cloud_graph_pts]
