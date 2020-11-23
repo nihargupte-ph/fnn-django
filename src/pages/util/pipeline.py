@@ -46,6 +46,14 @@ def get_associate_ABI(xds_path):
         band_id = 14
         associate_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'diff')
         associate_file_lst = os.listdir(associate_folder)
+    elif 'C07_G16' in xds_path:
+        band_id = 7
+        associate_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadF', 'pred', 'cloud')
+        associate_file_lst = os.listdir(associate_folder)
+    elif 'C14_G16' in xds_path:
+        band_id = 14
+        associate_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadF', 'pred', 'diff')
+        associate_file_lst = os.listdir(associate_folder)
     else:
         logging.critical("band id not found in path")
 
