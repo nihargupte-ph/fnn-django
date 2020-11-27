@@ -139,12 +139,6 @@ def filter_band(message):
     elif 'C07_G16' in objectId and 'ABI-L1b-RadC' in objectId:
         ret = (7, objectId)
         return ret
-    if 'C14_G16' in objectId and 'ABI-L1b-RadF' in objectId:
-        ret = (14, objectId)
-        return ret 
-    elif 'C07_G16' in objectId and 'ABI-L1b-RadF' in objectId:
-        ret = (7, objectId)
-        return ret
     else:
         ret = (None, objectId)
         return ret
@@ -159,11 +153,6 @@ def clear_folders():
     os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'diff'), 
     os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'pred'), 
     os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'cloud'),
-    os.path.join(config.NC_DATA_FOLDER, 'ABI_RadF', 'brazil' 'actual', 'band_7'), 
-    os.path.join(config.NC_DATA_FOLDER, 'ABI_RadF', 'brazil' 'actual', 'band_14'), 
-    os.path.join(config.NC_DATA_FOLDER, 'ABI_RadF', 'brazil' 'pred', 'diff'), 
-    os.path.join(config.NC_DATA_FOLDER, 'ABI_RadF', 'brazil' 'pred', 'pred'), 
-    os.path.join(config.NC_DATA_FOLDER, 'ABI_RadF', 'brazil' 'pred', 'cloud'),
     os.path.join(config.NC_DATA_FOLDER, 'GLM'),
     ]
 
@@ -179,11 +168,6 @@ def initialize_folders():
         os.path.join(config.MEDIA_FOLDER, 'data', 'ABI_RadC', 'pred', 'cloud'),
         os.path.join(config.MEDIA_FOLDER, 'data', 'ABI_RadC', 'pred', 'diff'),
         os.path.join(config.MEDIA_FOLDER, 'data', 'ABI_RadC', 'pred', 'pred'),
-        os.path.join(config.MEDIA_FOLDER, 'data', 'ABI_RadF', 'brazil', 'actual', 'band_7'),
-        os.path.join(config.MEDIA_FOLDER, 'data', 'ABI_RadF', 'brazil', 'actual', 'band_14'),
-        os.path.join(config.MEDIA_FOLDER, 'data', 'ABI_RadF', 'brazil', 'pred', 'cloud'),
-        os.path.join(config.MEDIA_FOLDER, 'data', 'ABI_RadF', 'brazil', 'pred', 'diff'),
-        os.path.join(config.MEDIA_FOLDER, 'data', 'ABI_RadF', 'brazil', 'pred', 'pred')
         os.path.join(config.MEDIA_FOLDER, 'data', 'GLM'),
         os.path.join(config.MEDIA_FOLDER, 'fires_gifs'),
         os.path.join(config.MEDIA_FOLDER, 'fires_pics'),
@@ -322,58 +306,6 @@ def pipeline():
         streaming_pull_future1.cancel()
         streaming_pull_future2.cancel()
 
-def pipeline_br():
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = config.API_KEY
-    logging.basicConfig(
-        level=logging.INFO,
-        filemode='a',
-        filename=os.path.join(config.BASE_FOLDER, 'logfiles', f'logfile_{datetime.datetime.now()}.log'),
-        datefmt='%H:%M:%S',
-    )
-    root = logging.getLogger()
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    root.addHandler(handler)
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-
-    subscriber1 = pubsub_v1.SubscriberClient()
-    subscriber2 = pubsub_v1.SubscriberClient()
-    subscription_path1 = subscriber1.subscription_path(config.GOOGLE_PROJECT_NAME, config.ABI_SUBSCRIPTION_NAME_BR)
-    streaming_pull_future1 = subscriber1.subscribe(subscription_path1, callback=callback_ABI)
-    subscription_path2 = subscriber2.subscription_path(config.GOOGLE_PROJECT_NAME, config.GLM_SUBSCRIPTION_NAME_BR)
-    streaming_pull_future2 = subscriber2.subscribe(subscription_path2, callback=callback_GLM)
-
-    try:
-        timestamp = Timestamp()
-        timestamp.GetCurrentTime()
-        response1 = subscriber1.seek(subscription_path1, time=timestamp)
-        response2 = subscriber2.seek(subscription_path2, time=timestamp)
-        logging.info("Successfully cleared old messages")
-    except:
-        logging.critical("Unable to clear subscriptions\n" + str(misc_functions.error_handling()))
-
-    try: 
-        initialize_folders()
-        clear_folders()
-        with open(os.path.join(config.MEDIA_FOLDER, 'misc', 'classified_lst.pkl'), 'wb') as f:
-            pickle.dump([], f)
-        logging.info("Initialized folders and cleared classified list")
-    except:
-        logging.critical(f"Unable to clear folders\n" + misc_functions.error_handling())
-    logging.info(f"Listening for messages on {subscription_path1} and {subscription_path2}..\n")
-
-    subscriber_shutdown = threading.Event()
-    streaming_pull_future1.add_done_callback(lambda result: subscriber_shutdown.set())
-    streaming_pull_future2.add_done_callback(lambda result: subscriber_shutdown.set())
-
-
-    # Wrap subscriber in a 'with' block to automatically call close() when done.
-    with subscriber1, subscriber2:
-        subscriber_shutdown.wait()
-        streaming_pull_future1.cancel()
-        streaming_pull_future2.cancel()
 
 # gcloud beta pubsub subscriptions create goes16-ABI-data-sub-filtered --project fire-neural-network --topic projects/gcp-public-data---goes-16/topics/gcp-public-data-goes-16 --message-filter='hasPrefix(attributes.objectId,"ABI-L1b-RadC/")' --enable-message-ordering --ack-deadline=20
 # gcloud beta pubsub subscriptions create goes16-GLM-data-sub-filtered --project fire-neural-network --topic projects/gcp-public-data---goes-16/topics/gcp-public-data-goes-16 --message-filter='hasPrefix(attributes.objectId,"GLM-L2-LCFA/")' --enable-message-ordering --ack-deadline=20
