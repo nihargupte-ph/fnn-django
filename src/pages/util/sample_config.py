@@ -10,4 +10,6 @@ MEDIA_FOLDER = os.path.join(BASE_FOLDER, 'src', 'media')
 GOOGLE_PROJECT_NAME = 'fire-neural-network'
 ABI_SUBSCRIPTION_NAME = 'goes16-ABI-data-sub-filtered'
 GLM_SUBSCRIPTION_NAME = 'goes16-GLM-data-sub-filtered'
+ABI_SUBSCRIPTION_NAME_BR = 'goes16-ABI-data-sub-filtered-br'
+GLM_SUBSCRIPTION_NAME_BR = 'goes16-GLM-data-sub-filtered-br'
 SECRET_CONFIG_PATH = '/home/n/Keys/config_fnn.json'
