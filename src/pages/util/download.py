@@ -78,6 +78,7 @@ def download_preproc_ABI(objectId):
     try:
         clipped_xds = clip_xds_cali(xds_copy)
         # We need to remove it and not just overwrite as overwriting netcdf4 files requires elevated priveleges
+        xds.close()
         os.remove(filepath)
         clipped_xds.to_netcdf(path=filepath, mode='w')
         logging.info(f"Clipped {objectId}")
@@ -86,7 +87,6 @@ def download_preproc_ABI(objectId):
         raise Exception
 
     clipped_xds.close()
-    xds.close()
     xds_copy.close()
 
     return filepath
