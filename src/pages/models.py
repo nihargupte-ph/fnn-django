@@ -48,3 +48,4 @@ class FireModel(models.Model):
     vmin                 = models.FloatField(default=0)
     vmax                 = models.FloatField(default=3)
     jpg_folder_path      = models.CharField(max_length=400, null=True, blank=True)
+    area                 = models.CharField(max_length=100, default='California') # delete default after migration
