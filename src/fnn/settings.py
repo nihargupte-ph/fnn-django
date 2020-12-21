@@ -136,7 +136,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_USE_SSL = True
 EMAIL_HOST = 'mail.privateemail.com'
 EMAIL_HOST_USER = 'info@fireneuralnetwork.com'
-EMAIL_HOST_PASSWORD = 'Fire2021Tuz'
+EMAIL_HOST_PASSWORD = 'EMAIL_HOST_PASSWORD'
 EMAIL_PORT = 465
 
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
