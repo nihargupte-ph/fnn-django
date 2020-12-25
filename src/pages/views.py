@@ -155,7 +155,7 @@ class HomeView(TemplateView):
 
 class FirePageView(ListView):
     model = FireModel
-    template_name = 'firepage.html'
+    # template_name = 'firepage.html'
     context_object_name = 'fire_list'
     ordering = ['-timestamp']
     paginate_by = 50

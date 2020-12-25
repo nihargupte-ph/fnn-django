@@ -1,0 +1,70 @@
+{% extends 'base.html'%}
+{% load timezone_conversion %}
+
+{% block content %}
+<section class="projects-section bg-dark" id="projects">
+    <div class="container">
+        <!-- Featured Project Row-->
+        <div class="row align-items-center no-gutters mb-4 mb-lg-5">
+            <div class="col-xl-1 col-lg-7"><img class="img-fluid mb-3 mb-lg-0" src="{{fire.image.url}}" alt="" /></div>                           
+            <table class="table table-striped" style="background-color:white">
+            <thead>
+                <tr>
+                <th scope="col">#</th>
+                <th scope="col">Latitude</th>
+                <th scope="col">Longitude</th>
+                <th scope="col">Timestamp (UTC) </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fire in fire_list %}
+                {% if fire.area == 'California' %}
+                <tr href="/firedetail/{{ fire.id }}">
+                <th scope="row"><a href="/firedetail/{{ fire.id }}">{{ fire.id }}</a></th>
+                <td>{{ fire.latitude|floatformat:3 }}</td>
+                <td>{{ fire.longitude|floatformat:3 }}</td>
+                <td>{{ fire.timestamp }}</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+            </table>
+        </div>
+
+        <div class='text-center'>
+        {% if is_paginated %}
+            {% if page_obj.has_previous %}
+                <a class='btn btn-outline-info mb-4' href="?page=1"> First </a>
+                <a class='btn btn-outline-info mb-4' href="?page={{ page_obj.previous_page_number }}"> Previous </a>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <a class='btn btn-info mb-4' href="?page={{ num }}"> {{ num }} </a>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a class='btn btn-outline-info mb-4' href="?page={{ num }}"> {{ num }} </a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a class='btn btn-outline-info mb-4' href="?page={{ page_obj.next_page_number }}"> Next </a>
+                <a class='btn btn-outline-info mb-4' href="?page={{ page_obj.paginator.num_pages }}"> Last </a>
+            {% endif %}
+        {% endif %}
+        </div>
+</section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const rows = document.querySelectorAll("tr[data-href]");
+
+        rows.forEach(rows => {
+            row.addEventListener("click", () => {
+                window.location.href = row.dataset.href;
+            });
+        });
+    });
+</script>
+
+{% endblock content %}
+
