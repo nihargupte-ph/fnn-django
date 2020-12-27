@@ -13,7 +13,7 @@
                 <th scope="col">#</th>
                 <th scope="col">Latitude</th>
                 <th scope="col">Longitude</th>
-                <th scope="col">Timestamp (UCT) </th>
+                <th scope="col">Timestamp (PST) </th>
                 </tr>
             </thead>
             <tbody>
@@ -23,7 +23,7 @@
                 <th scope="row"><a href="/firedetail/{{ fire.id }}">{{ fire.id }}</a></th>
                 <td>{{ fire.latitude|floatformat:3 }}</td>
                 <td>{{ fire.longitude|floatformat:3 }}</td>
-                <td>{{ fire.timestamp }}</td>
+                <td>{{ fire.timestamp|timezone_conversion_filter:"US/Pacific" }}</td>
                 </tr>
                 {% endif %}
                 {% endfor %}
