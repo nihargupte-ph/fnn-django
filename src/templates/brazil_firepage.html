@@ -1,4 +1,5 @@
 {% extends 'base.html'%}
+{% load timezone_conversion %}
 
 {% block content %}
 <section class="projects-section bg-dark" id="projects">
@@ -22,7 +23,7 @@
                 <th scope="row"><a href="/firedetail/{{ fire.id }}">{{ fire.id }}</a></th>
                 <td>{{ fire.latitude|floatformat:3 }}</td>
                 <td>{{ fire.longitude|floatformat:3 }}</td>
-                <td>{{ fire.timestamp }}</td>
+                <td>{{ fire.timestamp|timezone_conversion_filter:"UTC" }}</td>
                 </tr>
                 {% endif %}
                 {% endfor %}
