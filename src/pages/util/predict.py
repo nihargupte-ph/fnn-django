@@ -367,6 +367,8 @@ def classify(bandpath_dct):
         cloud_xds.close()
 
         ret = list(zip(anomaly_lons, anomaly_lats, [anomaly_time for _ in anomaly_lats]))
+
+        logging.info(f"Highest signal detected: {np.nanmax(diff_xds.Rad.values)}")
         return ret
 
     def cluster_anomalies(anomaly_lst):
