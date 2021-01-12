@@ -37,18 +37,23 @@ class NN:
         self.pos_measurements_y = pos_measurements_y
         self.pos_measurements = self.pos_measurements_x * self.pos_measurements_y
 
-def nn7():
+def nn7(folder):
     """ 
+    Parameters
+    ----------
+    folder: str
+        It's the folder of the model. It depends on the observed area.
+
     Our pretrained network for predicting band 7 goes-16 data. 
     The network is a dense 50, 25, 1 feed forward network with relu 
     then linear activation.
     """
 
     dirname = os.path.dirname(__file__)
-    model = keras.models.load_model(os.path.join(dirname, "band_7_predictor", "band_7_predictor"))
-    with open(os.path.join(dirname, "band_7_predictor", "scaler_x.pkl"), "rb") as f:
+    model = keras.models.load_model(os.path.join(dirname, folder, "band_7_predictor"))
+    with open(os.path.join(dirname, folder, "scaler_x.pkl"), "rb") as f:
         scaler_x = pickle.load(f)
-    with open(os.path.join(dirname, "band_7_predictor", "scaler_y.pkl"), "rb") as f:
+    with open(os.path.join(dirname, folder, "scaler_y.pkl"), "rb") as f:
         scaler_y = pickle.load(f)
     nn7 = NN(model, scaler_x, scaler_y, [7], 7, 4, 5, 5)
 
