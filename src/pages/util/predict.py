@@ -49,7 +49,7 @@ def predict_xds(xds_path, nn):
     bad_arr_count = 0
     for nc_file in filepath_dict[nn.band_of_interest]:
         xds = xarray.open_dataset(nc_file)
-        # Clipping to California
+        # Clipping to the observed area
         logging.info(f"Shape   {xds.Rad.values.shape}")
         if xds.Rad.values.shape[0] != 257 or xds.Rad.values.shape[1] != 281:
             bad_arr_count += 1
@@ -134,11 +134,12 @@ def normalize_xds(xds, proj="EPSG:4326"):
 
     return proj_xds
 
-def clip_xds_cali(xds):
+def clip_xds_cali(xds, folder):
     """ 
     Parameters
     ----------
     xds : xarray.Dataset
+    folder : shp file
 
     Returns  
     ----------
@@ -147,19 +148,21 @@ def clip_xds_cali(xds):
     """
     proj_xds = xds.rio.reproject("EPSG:4326")
     dirname = os.path.dirname(__file__)
-    df = gpd.read_file(os.path.join(config.CALI_SHP_FOLDER, "CA_State_TIGER2016.shp"))
+    df = gpd.read_file(folder)
     df = df.to_crs("EPSG:4326")
     geometry = df.geometry[0]
 
     clipped_xds = proj_xds.rio.clip([geometry], "EPSG:4326")
     return clipped_xds
 
-def predict_xarray(actual_xds_path):
+def predict_xarray(actual_xds_path, area):
     """ 
     Parameters
     ----------
     actual_xds_path : str
         path to the xarray.Dataset/netCDF4 file we are trying to predict. Could be band 14 or 7
+    area: dict
+        contains everything about the area (folders, shape file, model)
     nn : fnn.nn.NN, optional
         if not specified will default to band 7. Note that this function should only
         be used to predict in band 7, the only reason there is an option of actually providing
@@ -171,7 +174,7 @@ def predict_xarray(actual_xds_path):
         path to difference array
     """
     logging.info('entered prediction')
-    nn = nn7()
+    nn = nn7(area['nn_model'])
     try:
         pred_xds = predict_xds(actual_xds_path, nn)
         if not isinstance(pred_xds, xarray.Dataset):
@@ -240,12 +243,12 @@ def predict_xarray(actual_xds_path):
 
     logging.info("Successfully calculated difference xarray")
 
-    pred_path = os.path.join(config.NC_DATA_FOLDER, "ABI_RadC", "pred", 'pred', basename)
+    pred_path = os.path.join(area['data_folder'], area['bucket'], "pred", 'pred', basename)
     if os.path.exists(pred_path):
         os.remove(pred_path)
     pred_xds.to_netcdf(path=pred_path)
     logging.info(f"Successfully saved predicted xarray at {pred_path}")
-    diff_path = os.path.join(config.NC_DATA_FOLDER, "ABI_RadC", 'pred', "diff", basename)
+    diff_path = os.path.join(area['data_folder'], area['bucket'], 'pred', "diff", basename)
     if os.path.exists(diff_path):
         os.remove(diff_path)
     diff_xds.to_netcdf(path=diff_path)
@@ -255,7 +258,7 @@ def predict_xarray(actual_xds_path):
 
     return diff_path
         
-def predict_cloud(actual_xds_path, cloud_value=1, num_before=10):
+def predict_cloud(actual_xds_path, area, cloud_value=1, num_before=10):
     """ 
     Parameters
     ----------
@@ -299,7 +302,7 @@ def predict_cloud(actual_xds_path, cloud_value=1, num_before=10):
     cloud_xds = cloud_xds.drop(['Rad'])
 
     basename = os.path.basename(actual_xds_path)
-    cloud_path = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'cloud', basename)
+    cloud_path = os.path.join(area['data_folder'], area['bucket'], 'pred', 'cloud', basename)
     try:
         cloud_xds.to_netcdf(path=cloud_path, mode='w')
         logging.info("Successfully saved cloud xarray")
@@ -308,12 +311,14 @@ def predict_cloud(actual_xds_path, cloud_value=1, num_before=10):
 
     return cloud_path
 
-def classify(bandpath_dct):
+def classify(bandpath_dct, area):
     """ 
     Parameters
     ----------
     bandpath_dct : dict
         dictionary containing paths of predicted xarray and cloud xarray
+    area : dict
+        contains everything about the area (folders, shape file, model)
     """
 
     def get_anomalies(bandpath_dct):
@@ -403,12 +408,14 @@ def classify(bandpath_dct):
 
         return cluster_lst
 
-    def update_lightning(fire):
+    def update_lightning(fire, area):
         """ 
         Parameters
         ----------
         fire : pages.models.FireModel
             Fire model we are checking to see if there is lightning data on
+        area : dict
+            contains everything about the area (folders, shape file, model)
 
         Returns  
         ----------
@@ -420,7 +427,7 @@ def classify(bandpath_dct):
 
         # Combining xarray datasets in the folder this allows us to only worry about spatial search
         flash_lat_lst, flash_lon_lst, flash_time_lst = [], [], []
-        glm_folder = os.path.join(config.NC_DATA_FOLDER, 'GLM')
+        glm_folder = os.path.join(area['data_folder'], 'GLM')
         for xds_name in os.listdir(glm_folder):
             xds = xarray.open_dataset(os.path.join(glm_folder, xds_name))
             flash_lon_lst.append(xds.flash_lon.values)
@@ -492,8 +499,8 @@ def classify(bandpath_dct):
         xds.close()
         
     time_filter = anomaly_time - datetime.timedelta(days=1)
-    queried_fires = FireModel.objects.filter(latest_timestamp__gt=time_filter)
-    unqueried_fires = FireModel.objects.filter(latest_timestamp__lt=time_filter)
+    queried_fires = FireModel.objects.filter(latest_timestamp__gt=time_filter, area=area['name'])
+    unqueried_fires = FireModel.objects.filter(latest_timestamp__lt=time_filter, area=area['name'])
 
     if fire_found:
         queried_center_lst = []
@@ -528,13 +535,13 @@ def classify(bandpath_dct):
         # Making new fires or updating old ones
         fire_lst = []
         for cluster in new_cluster_lst:
-            fire = misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'])
+            fire = misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'], area['name'])
             logging.info(f"Created new fire with id {fire.id}")
             fire_lst.append(fire)
 
             # Checking for lightning
             try:
-                lightning_formed, fire = update_lightning(fire)
+                lightning_formed, fire = update_lightning(fire, area)
                 if lightning_formed: 
                     fire.cause = 'lightning'
                     logging.info(f"Fire number {fire.id} was formed by lightning")
@@ -543,25 +550,25 @@ def classify(bandpath_dct):
 
             # Recording video after sending emails 
             try:
-                fire = misc_functions.create_FireModel_video(fire)
+                fire = misc_functions.create_FireModel_video(fire, area)
                 logging.info("Successfully recorded video")
             except:
                 logging.warning(f"Unable to record video\n" + str(misc_functions.error_handling()))
 
     # Writing that we predicted using the file in classified_lst.pkl
-    with open(os.path.join(config.MEDIA_FOLDER, 'misc', 'classified_lst.pkl'), 'rb') as f:
+    with open(os.path.join(area['media_folder'], 'misc', 'classified_lst.pkl'), 'rb') as f:
         classified_lst = pickle.load(f)
     # If the list is too long we want to clear the first 50 or so entries
     if len(classified_lst) > 100:
         classified_lst = classified_lst[:50]
     classified_lst.append(os.path.basename(bandpath_dct['diff']))
-    with open(os.path.join(config.MEDIA_FOLDER, 'misc', 'classified_lst.pkl'), 'wb') as f:
+    with open(os.path.join(area['media_folder'], 'misc', 'classified_lst.pkl'), 'wb') as f:
         pickle.dump(classified_lst, f)
 
     # Updating the plots and videos of fires detected in the last time_filter 
     for fire in queried_fires:
         try:
-            misc_functions.update_FireModel_plots(bandpath_dct['diff'], bandpath_dct['cloud'], fire)
+            misc_functions.update_FireModel_plots(bandpath_dct['diff'], bandpath_dct['cloud'], fire, area)
             logging.info(f"Updated plot with id {fire.id}")
         except:
             logging.error(f"Failed to update plots with id {fire.id}\n" + str(misc_functions.error_handling()))
@@ -584,11 +591,11 @@ def classify(bandpath_dct):
     # Removing oldest file in actual, prediction, diff, and cloud array if we have at least 12 files (only band 7)
     max_files = 30
     folder_lst = [
-        os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_7'), 
-        os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_14'), 
-        os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'diff'), 
-        os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'pred'), 
-        os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'cloud'),
+        os.path.join(area['data_folder'], area['bucket'], 'actual', 'band_7'), 
+        os.path.join(area['data_folder'], area['bucket'], 'actual', 'band_14'), 
+        os.path.join(area['data_folder'], area['bucket'], 'pred', 'diff'), 
+        os.path.join(area['data_folder'], area['bucket'], 'pred', 'pred'), 
+        os.path.join(area['data_folder'], area['bucket'], 'pred', 'cloud'),
         ]
 
     # If every folder has more than enough files
