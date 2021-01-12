@@ -578,7 +578,6 @@ def cluster_to_FireModel(cluster, diff_xds_path, area):
         time_str = local_dt.strftime("%b %e, %Y, %I:%M %p")
         if(area['name']=='California'):    
             call_command('send_emails', lon, lat, time_str, fire.id)
-            logging.info('Email sent')
     except:
         logging.warning('Failed to send emails\n' + str(error_handling()))
 
