@@ -295,7 +295,7 @@ def snap_picture(xds, lon, lat, radius):
 
     return data
 
-def snap_video(lon, lat, radius):
+def snap_video(lon, lat, radius, area):
     """ 
     Parameters
     ----------
@@ -305,6 +305,9 @@ def snap_video(lon, lat, radius):
         Latitude of the fire
     radius : float
         radius in km of image
+    area : dict
+        contains everything about the area (folders, shape file, model)
+
     Returns
     ----------
     filename : str
@@ -321,12 +324,12 @@ def snap_video(lon, lat, radius):
 
     # Creating folder in tmp for holding pics that we will use to update the gifs
     ftime = '%d' % time.time()
-    folder_path = os.path.join(config.MEDIA_FOLDER, 'tmp', ftime)
+    folder_path = os.path.join(area['media_folder'], 'tmp', ftime)
     if not os.path.exists(folder_path):
         os.mkdir(folder_path)
 
     # Getting ordered diff folder so far to create images
-    diff_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'diff')
+    diff_folder = os.path.join(area['data_folder'], area['bucket'], 'pred', 'diff')
     diff_file_lst = os.listdir(diff_folder)
     diff_file_lst = sorted(diff_file_lst, key=key_from_filestring)
 
@@ -396,13 +399,13 @@ def snap_video(lon, lat, radius):
             
             # Converting to django contentfile
             filename = os.path.join('fires_gifs', f"{ftime}.gif")
-            filepath = os.path.join(config.MEDIA_FOLDER, filename)
+            filepath = os.path.join(area['media_folder'], filename)
             gif.format = 'gif'
             gif.save(filename=filepath)
 
     return filename, folder_path, vmin, vmax
 
-def get_graph_points(px_idx):
+def get_graph_points(px_idx, area):
     """ 
     Parameters
     ----------
@@ -416,27 +419,27 @@ def get_graph_points(px_idx):
         list of points of current files in actual and pred folders
     """
     # Getting filepaths of previous points, everyline for readability
-    pred_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'pred')
+    pred_folder = os.path.join(area['data_folder'], area['bucket'], 'pred', 'pred')
     pred_file_lst = os.listdir(pred_folder)
     pred_file_lst = sorted(pred_file_lst, key=key_from_filestring)
     prev_pts = len(pred_file_lst)
 
-    diff_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'diff')
+    diff_folder = os.path.join(area['data_folder'], area['bucket'], 'pred', 'diff')
     diff_file_lst = os.listdir(diff_folder)
     diff_file_lst = sorted(diff_file_lst, key=key_from_filestring)
     diff_file_lst = diff_file_lst[-prev_pts:]
 
-    cloud_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'cloud')
+    cloud_folder = os.path.join(area['data_folder'], area['bucket'], 'pred', 'cloud')
     cloud_file_lst = os.listdir(cloud_folder)
     cloud_file_lst = sorted(cloud_file_lst, key=key_from_filestring)
     cloud_file_lst = cloud_file_lst[-prev_pts:]
     
-    actual_7_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_7')
+    actual_7_folder = os.path.join(area['data_folder'], area['bucket'], 'actual', 'band_7')
     actual_7_file_lst = os.listdir(actual_7_folder)
     actual_7_file_lst = sorted(actual_7_file_lst, key=key_from_filestring)
     actual_7_file_lst = actual_7_file_lst[-prev_pts:]
 
-    actual_14_folder = os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_14')
+    actual_14_folder = os.path.join(area['data_folder'], area['bucket'], 'actual', 'band_14')
     actual_14_file_lst = os.listdir(actual_14_folder)
     actual_14_file_lst = sorted(actual_14_file_lst, key=key_from_filestring)
     actual_14_file_lst = actual_14_file_lst[-prev_pts:]
@@ -474,12 +477,14 @@ def get_graph_points(px_idx):
 
     return time_graph_pts, pred_graph_pts, diff_graph_pts, cloud_graph_pts, actual_7_graph_pts, actual_14_graph_pts
 
-def create_FireModel_video(fire):
+def create_FireModel_video(fire, area):
     """ 
     Parameters
     ----------
     fire : pages.FireModel
         FireModel we want to record
+    area : dict
+        contains everything about the area (folders, shape file, model)
     
     Return
     ----------
@@ -487,7 +492,7 @@ def create_FireModel_video(fire):
         updated FireModel 
     """ 
     # Snapping Video
-    gif_filepath, folder_path, vmin, vmax = snap_video(fire.longitude, fire.latitude, 20)
+    gif_filepath, folder_path, vmin, vmax = snap_video(fire.longitude, fire.latitude, 20, area)
     fire.video = gif_filepath
     fire.vmin = vmin
     fire.vmax = vmax
@@ -496,7 +501,7 @@ def create_FireModel_video(fire):
 
     return fire
 
-def cluster_to_FireModel(cluster, diff_xds_path):
+def cluster_to_FireModel(cluster, diff_xds_path, area):
     """ 
     Parameters
     ----------
@@ -505,6 +510,7 @@ def cluster_to_FireModel(cluster, diff_xds_path):
         will add the anomalies to a newly created FireModel
     diff_xds_path : str
         Path to diff_xds that we just predicted
+    area : dict
 
     Returns
     ----------
@@ -538,7 +544,7 @@ def cluster_to_FireModel(cluster, diff_xds_path):
     px_idx = px_idx_lst[ll_idx]
 
     # Getting graph points
-    time_graph_pts, pred_graph_pts, diff_graph_pts, cloud_graph_pts, actual_7_graph_pts, actual_14_graph_pts = get_graph_points(px_idx)
+    time_graph_pts, pred_graph_pts, diff_graph_pts, cloud_graph_pts, actual_7_graph_pts, actual_14_graph_pts = get_graph_points(px_idx, area)
 
     # TODO Insert Causes here
 
@@ -560,6 +566,7 @@ def cluster_to_FireModel(cluster, diff_xds_path):
         cloud_graph_pts=obj_to_binfield(cloud_graph_pts),
         actual_7_graph_pts=obj_to_binfield(actual_7_graph_pts),
         actual_14_graph_pts=obj_to_binfield(actual_14_graph_pts),
+        area=area['name']
     )
 
     xds.close()
@@ -569,8 +576,9 @@ def cluster_to_FireModel(cluster, diff_xds_path):
         tz = pytz.timezone('US/Pacific')
         local_dt = avg_timestamp.astimezone(tz)
         time_str = local_dt.strftime("%b %e, %Y, %I:%M %p")
-        call_command('send_emails', lon, lat, time_str, fire.id)
-        logging.info('Sent Emails')
+        if(area['name']=='California'):    
+            call_command('send_emails', lon, lat, time_str, fire.id)
+            logging.info('Email sent')
     except:
         logging.warning('Failed to send emails\n' + str(error_handling()))
 
@@ -608,7 +616,7 @@ def update_FireModel(cluster, fire):
 
     return fire
 
-def update_FireModel_plots(diff_xds_path, cloud_xds_path, fire):
+def update_FireModel_plots(diff_xds_path, cloud_xds_path, fire, area):
     """ 
     Parameters
     ----------
@@ -620,6 +628,8 @@ def update_FireModel_plots(diff_xds_path, cloud_xds_path, fire):
         is the same 
     fire : pages.models.FireModel
         firemodel we are updating
+    area : dict
+        contains everything about the area (folders, shape file, model)
     """
     diff_basname = os.path.basename(diff_xds_path)
     cloud_basename = os.path.basename(cloud_xds_path)
@@ -635,11 +645,11 @@ def update_FireModel_plots(diff_xds_path, cloud_xds_path, fire):
     px_idx_y             = fire.px_idx_y
 
     # Opening new xds
-    actual_7_xds = xarray.open_dataset(os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_7', diff_basname))
-    actual_14_xds = xarray.open_dataset(os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'actual', 'band_14', cloud_basename))
-    pred_xds = xarray.open_dataset(os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'pred', diff_basname))
-    diff_xds = xarray.open_dataset(os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'diff', diff_basname))
-    cloud_xds = xarray.open_dataset(os.path.join(config.NC_DATA_FOLDER, 'ABI_RadC', 'pred', 'cloud', cloud_basename))
+    actual_7_xds = xarray.open_dataset(os.path.join(area['data_folder'], area['bucket'], 'actual', 'band_7', diff_basname))
+    actual_14_xds = xarray.open_dataset(os.path.join(area['data_folder'], area['bucket'], 'actual', 'band_14', cloud_basename))
+    pred_xds = xarray.open_dataset(os.path.join(area['data_folder'], area['bucket'], 'pred', 'pred', diff_basname))
+    diff_xds = xarray.open_dataset(os.path.join(area['data_folder'], area['bucket'], 'pred', 'diff', diff_basname))
+    cloud_xds = xarray.open_dataset(os.path.join(area['data_folder'], area['bucket'], 'pred', 'cloud', cloud_basename))
 
     # Getting new points
     new_time_pt = dt64_to_datetime(diff_xds.t.values)
@@ -673,12 +683,13 @@ def update_FireModel_plots(diff_xds_path, cloud_xds_path, fire):
     diff_xds.close()
     cloud_xds.close()
 
-def update_FireModel_video(fire, diff_xds, radius=20):
+def update_FireModel_video(fire, diff_xds, area, radius=20):
     """ 
     Parameters
     ----------
     fire : pages.models.FireModel
-
+    area : dict
+        contains everything about the area (folders, shape file, model)
 
     Returns
     ----------
@@ -730,7 +741,7 @@ def update_FireModel_video(fire, diff_xds, radius=20):
             gif.type = 'optimize'
             
             # Converting to django contentfile
-            filepath = os.path.join(config.MEDIA_FOLDER, fire.video.name)
+            filepath = os.path.join(area['media_folder'], fire.video.name)
             gif.format = 'gif'
             os.remove(filepath)
             gif.save(filename=filepath)
