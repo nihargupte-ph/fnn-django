@@ -10,6 +10,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect
 from django.views.generic import TemplateView, ListView
 from django.contrib import messages
+from django.core.paginator import Paginator
 
 from .forms import UserForm, UnsubForm
 from .models import FireModel, UserModel
@@ -153,12 +154,19 @@ class HomeView(TemplateView):
             messages.success(request, f"Invalid information, please try again")
             return render(request, self.template_name, {'form':blank_form})
 
-class FirePageView(ListView):
-    model = FireModel
-    # template_name = 'firepage.html'
-    context_object_name = 'fire_list'
-    ordering = ['-timestamp']
-    paginate_by = 50
+def fire_list_view(request, area_name):
+    fire_list = FireModel.objects.filter(area__iexact=area_name)
+    new_fire_lst = []
+    for idx, fire in enumerate(fire_list):
+        fire.idx = idx+1
+        new_fire_lst.append(fire)
+    new_fire_lst = sorted(new_fire_lst, key=lambda fire: fire.id, reverse=True)
+    paginator = Paginator(new_fire_lst, 50)
+    page = area_name + "_firepage.html"
+
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, page, {'page_obj': page_obj})
 
 class EmailUnsubscribeView(TemplateView):
     template_name = "emailunsub.html"

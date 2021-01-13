@@ -8,11 +8,16 @@ from pages.util import pipeline
 class Command(BaseCommand):
     help = 'Django command for detecting fires in the background'
 
-    # def add_arguments(self, parser):
-    #     parser.add_argument('message', type=str)
+    def add_arguments(self , parser):
+        parser.add_argument('--pipeline', type=str)
 
     def handle(self, *args, **options):
-        pipeline.pipeline()
+        switcher = {
+            'brazil': pipeline.pipeline_brazil,
+            'california': pipeline.pipeline_california
+        }
+        func = switcher.get(options['pipeline'], lambda: "Invalid value")
+        func()
         # send_mail(
         # 'Pipeline ended',
         # f'Pipeline ended at {datetime.datetime.now()}',
