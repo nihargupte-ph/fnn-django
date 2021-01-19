@@ -83,7 +83,7 @@ class HomeView(TemplateView):
                 messages.error(request, f"You indicated that you only wanted updates 20 mi from your address but did not provide an address!\
                     Please re-enter your information along with address if you want to recieve location specific updates.")
                 return render(request, self.template_name, {'form':blank_form, 'invalid':True})
-            elif everywhere_bool == 'on':
+            elif everywhere_bool == None:
                 lon = None
                 lat = None
             else:
