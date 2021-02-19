@@ -255,7 +255,7 @@ def fire_detail_view(request, pk):
         lightning_idx = None
     
     # Converting to PST
-    time_graph_pts = [d.astimezone(pytz.timezone('US/Pacific')).strftime('%Y-%m-%d %H:%M') for d in time_graph_pts]
+    time_graph_pts = [d.astimezone(pytz.timezone('UTC')).strftime('%Y-%m-%d %H:%M') for d in time_graph_pts]
 
     # Creating changing bound based on cloud and non-cloud
     cloud_bound = [.17 if pt else .55 for pt in cloud_graph_pts]
