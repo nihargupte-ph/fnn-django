@@ -537,7 +537,7 @@ def classify(bandpath_dct, area):
         # Making new fires or updating old ones
         fire_lst = []
         for cluster in new_cluster_lst:
-            fire = misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'], area['name'])
+            fire = misc_functions.cluster_to_FireModel(cluster, bandpath_dct['diff'], area)
             logging.info(f"Created new fire with id {fire.id}")
             fire_lst.append(fire)
 
