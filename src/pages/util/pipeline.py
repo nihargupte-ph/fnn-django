@@ -9,6 +9,7 @@ import sys
 # Third Party imports
 from concurrent.futures import TimeoutError
 from google.cloud import pubsub_v1
+from google.pubsub_v1.types import SeekRequest
 import tensorflow as tf
 from google.protobuf.timestamp_pb2 import Timestamp
 
@@ -305,8 +306,11 @@ def pipeline_california():
     try:
         timestamp = Timestamp()
         timestamp.GetCurrentTime()
-        response1 = subscriber1.seek(subscription_path1, time=timestamp)
-        response2 = subscriber2.seek(subscription_path2, time=timestamp)
+        seekrequest1, seekrequest2 = SeekRequest(), SeekRequest()
+        seekrequest1.subscription, seekrequest1.time = subscription_path1, timestamp
+        seekrequest2.subscription, seekrequest2.time = subscription_path2, timestamp
+        response1 = subscriber1.seek(seekrequest1)
+        response2 = subscriber2.seek(seekrequest2)
         logging.info("Successfully cleared old messages")
     except:
         logging.critical("Unable to clear subscriptions\n" + str(misc_functions.error_handling()))
@@ -366,8 +370,12 @@ def pipeline_brazil():
     try:
         timestamp = Timestamp()
         timestamp.GetCurrentTime()
-        response1 = subscriber1.seek(subscription_path1, time=timestamp)
-        response2 = subscriber2.seek(subscription_path2, time=timestamp)
+        seekrequest1, seekrequest2 = SeekRequest(), SeekRequest()
+        seekrequest1.subscription, seekrequest1.time = subscription_path1, timestamp
+        seekrequest2.subscription, seekrequest2.time = subscription_path2, timestamp
+        response1 = subscriber1.seek(seekrequest1)
+        response2 = subscriber2.seek(seekrequest2)
+
         logging.info("Successfully cleared old messages")
     except:
         logging.critical("Unable to clear subscriptions\n" + str(misc_functions.error_handling()))
